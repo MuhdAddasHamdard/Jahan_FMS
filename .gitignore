@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Environment variables (contains secrets)
+.env
+.env.*
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# VS Code (optional)
+.vscode/
+
+# Build output
+dist/
+build/
+
+# Coverage reports
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Prisma local development files (if created)
+.prisma/
+
+# Generated files (only if you're regenerating them)
+generated/
+
+# TypeScript build info (if you use TypeScript later)
+*.tsbuildinfo
