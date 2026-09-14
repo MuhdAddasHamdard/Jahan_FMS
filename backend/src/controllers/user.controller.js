@@ -1,6 +1,8 @@
-import { Prisma } from "../../generated/prisma/client";
-import { getAllUsers, createUserService } from "../services/user.service";
-
+import {
+  getAllUsers,
+  createUserService,
+  loginUserService,
+} from "../services/user.service";
 export const getUsers = async (req, res) => {
   try {
     const users = await getAllUsers();
@@ -33,6 +35,31 @@ export const createUser = async (req, res) => {
     }
 
     res.status(500).json({
+      message: "Something went wrong on the server",
+    });
+  }
+};
+
+export const loginUser = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await loginUserService(email, password);
+
+    if (!user) {
+      return res.status(401).json({
+        message: "Invalid email or password",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Login successful",
+      user,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
       message: "Something went wrong on the server",
     });
   }
