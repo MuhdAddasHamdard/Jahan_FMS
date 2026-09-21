@@ -58,3 +58,19 @@ export const loginUserService = async (email, password) => {
     createdAt: user.createdAt,
   };
 };
+
+export const getUserById = async (id) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id: Number(id),
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      createdAt: true,
+    },
+  });
+  return user;
+};
