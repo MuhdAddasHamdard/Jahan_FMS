@@ -1,16 +1,7 @@
-import express from "express";
-import userRouter from "./routes/user.router";
+import app from "./app";
 import "dotenv/config";
 
-const app = express();
-const PORT = 5000;
-
-app.use(express.json());
-app.use("/users", userRouter);
-
-app.get("/", (req, res) => {
-  res.send("Financial Management System API");
-});
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

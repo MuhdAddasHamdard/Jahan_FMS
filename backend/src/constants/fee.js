@@ -1,0 +1,2 @@
+export const FEE_PERIODS = ["MONTHLY", "SESSION", "ONE_TIME"];
+export const INSTALLMENT_STATUSES = ["PENDING", "PARTIAL", "PAID"];

@@ -1,0 +1,8 @@
+export const ROLES = {
+  ADMIN: "ADMIN",
+  FINANCE: "FINANCE",
+  TEACHER: "TEACHER",
+  STUDENT: "STUDENT",
+};
+
+export const DEFAULT_ROLE = ROLES.STUDENT;

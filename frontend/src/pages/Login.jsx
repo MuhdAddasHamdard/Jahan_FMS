@@ -1,49 +1,60 @@
 import { useState } from "react";
+import { useLocation, useNavigate, Navigate } from "react-router-dom";
+import { useAuth } from "../auth/auth-context";
+import Alert from "../components/Alert";
 
 const Login = () => {
+  const { login, isAuthenticated, loading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const from = location.state?.from?.pathname || "/";
+
+  if (!loading && isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
   const validateForm = () => {
     const newErrors = {};
-
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!email) {
       newErrors.email = "Email is required";
-    }
-
-    if (email && !emailPattern.test(email)) {
+    } else if (!emailPattern.test(email)) {
       newErrors.email = "Please enter a valid email address";
     }
 
     if (!password) {
       newErrors.password = "Password is required";
-    } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
     }
 
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    setFormError("");
 
-    const isValid = validateForm();
+    if (!validateForm()) return;
 
-    if (!isValid) return;
+    setIsSubmitting(true);
 
-    setIsLoading(true);
-
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
-
-    console.log("Form is valid");
+    try {
+      await login(email, password);
+      navigate(from, { replace: true });
+    } catch (error) {
+      setFormError(error.message || "Unable to sign in");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
   return (
     <main className="min-h-screen bg-slate-100">
       <div className="grid min-h-screen lg:grid-cols-2">
@@ -58,16 +69,16 @@ const Login = () => {
 
           <div className="max-w-lg">
             <p className="mb-4 text-sm font-medium uppercase tracking-widest text-teal-400">
-              Financial Management
+              Institute Management
             </p>
 
             <h2 className="text-5xl font-bold leading-tight">
-              Manage your finances with clarity.
+              Manage your institute with clarity.
             </h2>
 
             <p className="mt-6 max-w-md text-lg leading-relaxed text-slate-400">
-              A centralized platform for managing users, accounts, transactions,
-              income, expenses, and financial reports.
+              Fee collection, staff salaries, expenses, classes, and reporting
+              for your institute.
             </p>
           </div>
 
@@ -90,6 +101,9 @@ const Login = () => {
                 Enter your credentials to access Jahan FMS.
               </p>
             </div>
+
+            {formError && <div className="mb-5"><Alert type="error" message={formError} /></div>}
+
             <form className="space-y-5" onSubmit={handleSubmit}>
               {/* Email */}
               <div>
@@ -140,10 +154,10 @@ const Login = () => {
               {/* Submit */}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isSubmitting}
                 className="w-full rounded-lg bg-teal-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isLoading ? "Signing in..." : "Sign in"}
+                {isSubmitting ? "Signing in..." : "Sign in"}
               </button>
             </form>
           </div>

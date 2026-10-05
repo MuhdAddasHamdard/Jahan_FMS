@@ -4,7 +4,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "tsx src/server.js"
+    "start": "tsx src/server.js",
+    "seed": "tsx src/scripts/seed.js",
+    "test": "tsx --test \"test/*.test.js\""
   },
   "keywords": [],
   "author": "",
