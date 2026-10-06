@@ -21,6 +21,10 @@ export const businessErrorToResponse = (error) => {
       message:
         "Cannot edit: this fee plan already has collected payments. Add a new fee plan instead.",
     },
+    TEACHER_NOT_FOUND: {
+      status: 400,
+      message: "Choose a teacher from the list. That account is not a teacher.",
+    },
     REFUND_NOT_FOUND: { status: 404, message: "Refund not found" },
     PAYMENT_NOT_FOUND: { status: 404, message: "Salary payment not found" },
     FEETYPE_HAS_PLANS: {

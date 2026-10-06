@@ -18,6 +18,14 @@ const formatStudent = (student) => ({
         id: student.class.id,
         name: student.class.name,
         section: student.class.section,
+        teacherId: student.class.teacherId ?? null,
+        teacher: student.class.teacher
+          ? {
+              id: student.class.teacher.id,
+              name: student.class.teacher.name,
+              email: student.class.teacher.email,
+            }
+          : null,
       }
     : null,
   account: student.account
@@ -26,6 +34,16 @@ const formatStudent = (student) => ({
   createdAt: student.createdAt,
   updatedAt: student.updatedAt,
 });
+
+const studentClassInclude = {
+  select: {
+    id: true,
+    name: true,
+    section: true,
+    teacherId: true,
+    teacher: { select: { id: true, name: true, email: true } },
+  },
+};
 
 const formatInstallment = (installment) => ({
   id: installment.id,
@@ -86,7 +104,7 @@ export const getAllStudents = async (userId, filters = {}) => {
   const students = await prisma.student.findMany({
     where,
     include: {
-      class: { select: { id: true, name: true, section: true } },
+      class: studentClassInclude,
       account: { select: { id: true, email: true } },
     },
     orderBy: { name: "asc" },
@@ -101,7 +119,7 @@ export const getStudentById = async (userId, id, role) => {
   const student = await prisma.student.findFirst({
     where: { id: Number(id), userId },
     include: {
-      class: { select: { id: true, name: true, section: true } },
+      class: studentClassInclude,
       account: isTeacher
         ? false
         : { select: { id: true, email: true } },
@@ -160,6 +178,7 @@ export const createStudent = async (userId, studentData) => {
       classId: studentData.classId ? Number(studentData.classId) : null,
       userId,
     },
+    include: { class: studentClassInclude },
   });
 
   return formatStudent(student);
@@ -191,7 +210,10 @@ export const updateStudent = async (userId, id, studentData) => {
           ? Number(studentData.classId)
           : undefined,
     },
-    include: { class: { select: { id: true, name: true, section: true } } },
+    include: {
+      class: studentClassInclude,
+      account: { select: { id: true, email: true } },
+    },
   });
 
   return formatStudent(student);

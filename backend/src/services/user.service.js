@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import prisma from "../prisma";
+import { ROLES } from "../constants/roles";
 
 const publicUserSelect = {
   id: true,
@@ -16,6 +17,16 @@ export const getAllUsers = async () => {
   });
 
   return users;
+};
+
+export const getTeachers = async () => {
+  const teachers = await prisma.user.findMany({
+    where: { role: ROLES.TEACHER },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: "asc" },
+  });
+
+  return teachers;
 };
 
 export const createUserService = async (userData) => {

@@ -1,4 +1,5 @@
 import prisma from "../prisma";
+import { ROLES } from "../constants/roles";
 
 const formatTeacher = (teacher) =>
   teacher
@@ -81,12 +82,31 @@ export const getClassById = async (userId, id) => {
     : null;
 };
 
+const resolveTeacherId = async (teacherId) => {
+  if (!teacherId) {
+    return null;
+  }
+
+  const teacher = await prisma.user.findFirst({
+    where: { id: Number(teacherId), role: ROLES.TEACHER },
+    select: { id: true },
+  });
+
+  return teacher ? teacher.id : undefined;
+};
+
 export const createClass = async (userId, classData) => {
+  const teacherId = await resolveTeacherId(classData.teacherId);
+
+  if (teacherId === undefined) {
+    return { error: "TEACHER_NOT_FOUND" };
+  }
+
   const classRecord = await prisma.class.create({
     data: {
       name: classData.name,
       section: classData.section ?? null,
-      teacherId: classData.teacherId ? Number(classData.teacherId) : null,
+      teacherId,
       userId,
     },
     include: {
@@ -108,26 +128,32 @@ export const updateClass = async (userId, id, classData) => {
     return null;
   }
 
+  let teacherId;
+
+  if (classData.clearTeacher) {
+    teacherId = null;
+  } else if (classData.teacherId !== undefined) {
+    teacherId = await resolveTeacherId(classData.teacherId);
+
+    if (teacherId === undefined) {
+      return { error: "TEACHER_NOT_FOUND" };
+    }
+  }
+
   const classRecord = await prisma.class.update({
     where: { id: Number(id) },
     data: {
       name: classData.name ?? undefined,
       section: classData.section ?? undefined,
-      teacherId: classData.clearTeacher
-        ? null
-        : classData.teacherId !== undefined
-          ? Number(classData.teacherId)
-          : undefined,
+      teacherId,
     },
-    include: { teacher: { select: { id: true, name: true, email: true } } },
+    include: {
+      _count: { select: { students: true } },
+      teacher: { select: { id: true, name: true, email: true } },
+    },
   });
 
-  return {
-    id: classRecord.id,
-    name: classRecord.name,
-    section: classRecord.section,
-    teacher: formatTeacher(classRecord.teacher),
-  };
+  return formatClass(classRecord);
 };
 
 export const deleteClass = async (userId, id) => {

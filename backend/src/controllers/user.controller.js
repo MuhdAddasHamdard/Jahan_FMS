@@ -1,5 +1,6 @@
 import {
   getAllUsers,
+  getTeachers,
   createUserService,
   getUserById,
   loginUserService,
@@ -19,6 +20,16 @@ export const getUsers = async (req, res) => {
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const getTeachersController = async (req, res) => {
+  try {
+    const teachers = await getTeachers();
+    res.status(200).json(teachers);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Something went wrong on the server" });
   }
 };
 

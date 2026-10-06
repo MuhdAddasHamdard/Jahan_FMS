@@ -60,13 +60,11 @@ const ClassFields = ({ value, onChange, teachers, showTeacher, idPrefix, lockNam
           className={inputClass}
         >
           <option value="">No assigned teacher</option>
-          {teachers
-            .filter((teacher) => teacher.role === "TEACHER")
-            .map((teacher) => (
-              <option key={teacher.id} value={teacher.id}>
-                {teacher.name} ({teacher.email})
-              </option>
-            ))}
+          {teachers.map((teacher) => (
+            <option key={teacher.id} value={teacher.id}>
+              {teacher.name} ({teacher.email})
+            </option>
+          ))}
         </select>
       </FormField>
     )}
@@ -201,6 +199,21 @@ const ClassDetail = ({
   onEditMaterial,
 }) => (
   <div className="space-y-5">
+    <div className="flex flex-wrap gap-x-6 gap-y-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">
+      <span className="text-slate-500">
+        Class:{" "}
+        <span className="font-semibold text-slate-900">
+          {classRecord.name}
+          {classRecord.section ? ` · Section ${classRecord.section}` : ""}
+        </span>
+      </span>
+      <span className="text-slate-500">
+        Teacher:{" "}
+        <span className="font-semibold text-slate-900">
+          {classRecord.teacher ? classRecord.teacher.name : "Not assigned"}
+        </span>
+      </span>
+    </div>
     <div>
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
         Schedule
@@ -353,12 +366,25 @@ const ClassRow = ({
   <li className="border-b border-slate-100 last:border-0">
     <div className="flex items-center justify-between px-4 py-3">
       <div>
-        <p className="text-sm font-medium text-slate-900">{classRecord.name}</p>
+        <p className="text-sm font-medium text-slate-900">
+          {classRecord.name}
+          {classRecord.section ? (
+            <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600">
+              Section {classRecord.section}
+            </span>
+          ) : null}
+        </p>
         <p className="text-xs text-slate-500">
-          {classRecord.section ? `Section ${classRecord.section}` : "No section"}
-          {classRecord.teacher
-            ? ` · Teacher: ${classRecord.teacher.name}`
-            : " · No teacher assigned"}
+          {classRecord.teacher ? (
+            <>
+              <span className="font-semibold text-slate-600">
+                {classRecord.teacher.name}
+              </span>
+              <span className="text-slate-400"> · Teacher</span>
+            </>
+          ) : (
+            <span className="text-amber-600">No teacher assigned</span>
+          )}
         </p>
       </div>
       <div className="flex items-center gap-3">
@@ -403,7 +429,8 @@ const ClassRow = ({
 );
 
 const ClassesPage = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isFinance } = useAuth();
+  const canAssignTeacher = isAdmin || isFinance;
   const toast = useToast();
   const [classList, setClassList] = useState([]);
   const [teachers, setTeachers] = useState([]);
@@ -445,8 +472,8 @@ const ClassesPage = () => {
     let cancelled = false;
 
     const requests = [api.get("/classes")];
-    if (isAdmin) {
-      requests.push(api.get("/users").catch(() => []));
+    if (canAssignTeacher) {
+      requests.push(api.get("/users/teachers").catch(() => []));
     }
 
     Promise.all(requests)
@@ -467,7 +494,7 @@ const ClassesPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [isAdmin]);
+  }, [canAssignTeacher]);
 
   const handleCreate = async (event) => {
     event.preventDefault();
@@ -707,7 +734,7 @@ const ClassesPage = () => {
           value={draft}
           onChange={setDraft}
           teachers={teachers}
-          showTeacher={isAdmin}
+          showTeacher={canAssignTeacher}
           idPrefix="class-create"
         />
         <button
@@ -791,7 +818,7 @@ const ClassesPage = () => {
             value={editClassValue}
             onChange={setEditClassValue}
             teachers={teachers}
-            showTeacher={isAdmin}
+            showTeacher={canAssignTeacher}
             idPrefix="class-edit"
           />
         </form>

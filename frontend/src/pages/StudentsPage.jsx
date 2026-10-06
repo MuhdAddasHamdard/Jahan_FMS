@@ -105,7 +105,11 @@ const StudentFields = ({ value, onChange, classes, idPrefix, lockAdmissionNo = f
       />
     </FormField>
 
-    <FormField label="Class" htmlFor={`${idPrefix}-class`} hint="Optional">
+    <FormField
+      label="Class"
+      htmlFor={`${idPrefix}-class`}
+      hint="The student's teacher comes from this class"
+    >
       <select
         id={`${idPrefix}-class`}
         value={value.classId}
@@ -116,7 +120,8 @@ const StudentFields = ({ value, onChange, classes, idPrefix, lockAdmissionNo = f
         {classes.map((classRecord) => (
           <option key={classRecord.id} value={classRecord.id}>
             {classRecord.name}
-            {classRecord.section ? ` - ${classRecord.section}` : ""}
+            {classRecord.section ? ` - Section ${classRecord.section}` : ""}
+            {classRecord.teacher ? ` - ${classRecord.teacher.name}` : " - no teacher"}
           </option>
         ))}
       </select>
@@ -260,6 +265,16 @@ const StudentDetail = ({
 }) => (
   <div className="space-y-4">
     <div className="flex flex-wrap gap-4 text-sm">
+      <p className="text-slate-600">
+        <span className="font-semibold text-slate-900">Class:</span>{" "}
+        {student.class
+          ? `${student.class.name}${student.class.section ? ` (Section ${student.class.section})` : ""}`
+          : "Not assigned"}
+      </p>
+      <p className="text-slate-600">
+        <span className="font-semibold text-slate-900">Teacher:</span>{" "}
+        {student.class?.teacher?.name || "Not assigned"}
+      </p>
       <p className="text-slate-600">
         <span className="font-semibold text-slate-900">Parent / guardian:</span>{" "}
         {student.guardianName || "—"}
@@ -411,7 +426,31 @@ const StudentRow = ({
         <p className="text-sm font-medium text-slate-900">{student.name}</p>
         <p className="text-xs text-slate-500">
           {student.admissionNo}
-          {student.class ? ` · ${student.class.name}` : " · No class"}
+          {student.class ? (
+            <>
+              {" · "}
+              <span className="font-semibold text-slate-700">
+                {student.class.name}
+                {student.class.section ? ` (Section ${student.class.section})` : ""}
+              </span>
+            </>
+          ) : (
+            " · No class"
+          )}
+        </p>
+        <p className="text-xs text-slate-500">
+          {student.class?.teacher ? (
+            <>
+              <span className="font-semibold text-slate-700">
+                {student.class.teacher.name}
+              </span>
+              <span className="text-slate-400"> · Teacher</span>
+            </>
+          ) : (
+            <span className="text-amber-600">
+              {student.class ? "No teacher assigned" : "No class or teacher"}
+            </span>
+          )}
         </p>
       </button>
       <div className="flex items-center gap-3">

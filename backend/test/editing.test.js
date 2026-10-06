@@ -376,6 +376,129 @@ test("PATCH /students/:id can move and clear a class", async () => {
   assert.equal(cleared.data.classId, null);
 });
 
+test("classes carry a teacher and students surface their class teacher", async () => {
+  const teacherReg = await postJson(baseUrl, "/users", {
+    name: "Class Teacher",
+    email: uniqueEmail("class-teacher"),
+    password: "password123",
+  });
+  await prisma.user.update({
+    where: { id: teacherReg.data.id },
+    data: { role: "TEACHER" },
+  });
+
+  const classRes = await post("/classes", {
+    name: "Grade 7",
+    section: "B",
+    teacherId: teacherReg.data.id,
+  });
+  assert.equal(classRes.status, 201);
+  assert.equal(classRes.data.teacher.id, teacherReg.data.id);
+  assert.equal(classRes.data.teacher.name, "Class Teacher");
+
+  const studentRes = await post("/students", {
+    admissionNo: `ADM-${Date.now()}`,
+    name: "Class Student",
+    classId: classRes.data.id,
+  });
+  assert.equal(studentRes.status, 201);
+  assert.equal(studentRes.data.class.teacher.id, teacherReg.data.id);
+
+  const list = await get("/students");
+  const listed = list.data.find((item) => item.id === studentRes.data.id);
+  assert.equal(listed.class.name, "Grade 7");
+  assert.equal(listed.class.teacher.name, "Class Teacher");
+
+  const detail = await get(`/students/${studentRes.data.id}`);
+  assert.equal(detail.data.class.teacher.name, "Class Teacher");
+
+  const reassigned = await patch(`/classes/${classRes.data.id}`, { teacherId: null });
+  assert.equal(reassigned.status, 200);
+  assert.equal(reassigned.data.teacher, null);
+
+  const afterClear = await get(`/students/${studentRes.data.id}`);
+  assert.equal(afterClear.data.class.teacher, null);
+});
+
+test("finance can list teachers and assign them to classes", async () => {
+  const teachers = await get("/users/teachers", financeToken);
+  assert.equal(teachers.status, 200);
+  assert.ok(Array.isArray(teachers.data));
+  teachers.data.forEach((teacher) => {
+    assert.ok(teacher.id);
+    assert.ok(teacher.name);
+  });
+
+  const teacherRes = await postJson(baseUrl, "/users", {
+    name: "Finance Assigned Teacher",
+    email: uniqueEmail("finance-teacher"),
+    password: "password123",
+  });
+  await prisma.user.update({
+    where: { id: teacherRes.data.id },
+    data: { role: "TEACHER" },
+  });
+
+  const created = await postJson(
+    baseUrl,
+    "/classes",
+    { name: "Finance Class", section: "A", teacherId: teacherRes.data.id },
+    financeToken,
+  );
+  assert.equal(created.status, 201);
+  assert.equal(created.data.teacher.id, teacherRes.data.id);
+
+  const patched = await patchJson(
+    baseUrl,
+    `/classes/${created.data.id}`,
+    { section: "C" },
+    financeToken,
+  );
+  assert.equal(patched.status, 200);
+  assert.equal(patched.data.section, "C");
+  assert.equal(patched.data.teacher.id, teacherRes.data.id);
+});
+
+test("classes reject accounts that are not teachers", async () => {
+  const studentReg = await postJson(baseUrl, "/users", {
+    name: "Not A Teacher",
+    email: uniqueEmail("not-teacher"),
+    password: "password123",
+  });
+
+  const { status, data } = await postJson(
+    baseUrl,
+    "/classes",
+    { name: "Bad Teacher Class", teacherId: studentReg.data.id },
+    adminToken,
+  );
+
+  assert.equal(status, 400);
+  assert.match(data.message, /not a teacher/i);
+});
+
+test("teachers cannot read the teacher directory", async () => {
+  const registration = await postJson(baseUrl, "/users", {
+    name: "Directory Teacher",
+    email: uniqueEmail("directory-teacher"),
+    password: "password123",
+  });
+  await prisma.user.update({
+    where: { id: registration.data.id },
+    data: { role: "TEACHER" },
+  });
+  const login = await postJson(baseUrl, "/users/login", {
+    email: registration.data.email,
+    password: "password123",
+  });
+
+  const { status } = await get("/users/teachers", login.data.token);
+  assert.equal(status, 403);
+
+  const cleanup = await deleteJson(`/users/${registration.data.id}`);
+  assert.equal(cleanup.status, 204);
+});
+
 test("avatar upload accepts a large base64 payload and rejects absurd ones", async () => {
   const target = await postJson(baseUrl, "/users", {
     name: "Avatar User",

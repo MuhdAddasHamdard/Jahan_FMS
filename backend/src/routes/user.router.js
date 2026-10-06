@@ -4,6 +4,7 @@ import { authorizeRole } from "../middleware/role.middleware";
 import { validateRole } from "../middleware/role.validation";
 import {
   getUsers,
+  getTeachersController,
   createUser,
   loginUser,
   getCurrentUser,
@@ -18,6 +19,12 @@ import { ROLES } from "../constants/roles";
 const router = express.Router();
 
 router.get("/", authenticateUser, authorizeRole(ROLES.ADMIN), getUsers);
+router.get(
+  "/teachers",
+  authenticateUser,
+  authorizeRole(ROLES.ADMIN, ROLES.FINANCE),
+  getTeachersController,
+);
 router.post("/", validateUser, createUser);
 router.post("/login", loginUser);
 router.get("/me", authenticateUser, getCurrentUser);

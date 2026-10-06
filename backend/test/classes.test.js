@@ -73,6 +73,10 @@ before(async () => {
     email: uniqueEmail("class-teacher"),
     password: "password123",
   });
+  await prisma.user.update({
+    where: { id: teacher.data.id },
+    data: { role: "TEACHER" },
+  });
   teacherId = teacher.data.id;
 });
 

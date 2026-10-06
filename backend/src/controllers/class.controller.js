@@ -41,6 +41,10 @@ export const getClass = async (req, res) => {
 export const createClassController = async (req, res) => {
   try {
     const classRecord = await createClass(req.user.id, req.body);
+    if (classRecord?.error) {
+      const mapped = businessErrorToResponse(classRecord.error);
+      return res.status(mapped.status).json({ message: mapped.message });
+    }
     res.status(201).json(classRecord);
   } catch (error) {
     console.error(error);
@@ -53,6 +57,10 @@ export const updateClassController = async (req, res) => {
     const classRecord = await updateClass(req.user.id, req.params.id, req.body);
     if (!classRecord) {
       return res.status(404).json({ message: "Class not found" });
+    }
+    if (classRecord.error) {
+      const mapped = businessErrorToResponse(classRecord.error);
+      return res.status(mapped.status).json({ message: mapped.message });
     }
     res.status(200).json(classRecord);
   } catch (error) {
