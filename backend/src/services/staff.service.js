@@ -15,7 +15,7 @@ const formatStaff = (staff) => ({
 
 export const getAllStaff = async (userId) => {
   const staff = await prisma.staff.findMany({
-    where: { userId },
+    where: {},
     orderBy: { name: "asc" },
   });
 
@@ -24,7 +24,7 @@ export const getAllStaff = async (userId) => {
 
 export const getStaffById = async (userId, id) => {
   const staff = await prisma.staff.findFirst({
-    where: { id: Number(id), userId },
+    where: { id: Number(id) },
   });
 
   return staff ? formatStaff(staff) : null;
@@ -48,7 +48,7 @@ export const createStaff = async (userId, staffData) => {
 
 export const updateStaff = async (userId, id, staffData) => {
   const existing = await prisma.staff.findFirst({
-    where: { id: Number(id), userId },
+    where: { id: Number(id) },
     select: { id: true },
   });
 
@@ -73,7 +73,7 @@ export const updateStaff = async (userId, id, staffData) => {
 
 export const deleteStaff = async (userId, id) => {
   const existing = await prisma.staff.findFirst({
-    where: { id: Number(id), userId },
+    where: { id: Number(id) },
     select: { id: true },
   });
 
@@ -82,7 +82,7 @@ export const deleteStaff = async (userId, id) => {
   }
 
   const paymentCount = await prisma.salaryPayment.count({
-    where: { staffId: Number(id), userId },
+    where: { staffId: Number(id) },
   });
 
   if (paymentCount > 0) {
@@ -97,7 +97,7 @@ export const deleteStaff = async (userId, id) => {
 export const getSalaryPayments = async (userId, filters = {}) => {
   const { staffId } = filters;
 
-  const where = { userId };
+  const where = {};
 
   if (staffId && !Number.isNaN(Number(staffId))) {
     where.staffId = Number(staffId);
@@ -128,7 +128,7 @@ export const createSalaryPayment = async (
 ) => {
   return prisma.$transaction(async (tx) => {
     const staff = await tx.staff.findFirst({
-      where: { id: Number(staffId), userId },
+      where: { id: Number(staffId) },
       select: { id: true, name: true, staffNo: true, salary: true },
     });
 
@@ -175,7 +175,7 @@ export const createSalaryPayment = async (
 export const updateSalaryPayment = async (userId, id, { periodMonth, amount, paidOn }) => {
   return prisma.$transaction(async (tx) => {
     const payment = await tx.salaryPayment.findFirst({
-      where: { id: Number(id), userId },
+      where: { id: Number(id) },
       select: { id: true, staffId: true },
     });
 
@@ -218,7 +218,7 @@ export const updateSalaryPayment = async (userId, id, { periodMonth, amount, pai
 
 export const deleteSalaryPayment = async (userId, id) => {
   const payment = await prisma.salaryPayment.findFirst({
-    where: { id: Number(id), userId },
+    where: { id: Number(id) },
     select: { id: true },
   });
 

@@ -1,5 +1,6 @@
 import prisma from "../prisma";
 import { ROLES } from "../constants/roles";
+import { classScope, sharesInstituteData } from "../utils/scope";
 
 const formatTeacher = (teacher) =>
   teacher
@@ -39,9 +40,9 @@ const formatMaterial = (material) => ({
   createdAt: material.createdAt,
 });
 
-export const getAllClasses = async (userId) => {
+export const getAllClasses = async (userId, role) => {
   const classes = await prisma.class.findMany({
-    where: { userId },
+    where: classScope(role, userId),
     include: {
       _count: { select: { students: true } },
       teacher: { select: { id: true, name: true, email: true } },
@@ -52,9 +53,9 @@ export const getAllClasses = async (userId) => {
   return classes.map(formatClass);
 };
 
-export const getClassById = async (userId, id) => {
+export const getClassById = async (userId, role, id) => {
   const classRecord = await prisma.class.findFirst({
-    where: { id: Number(id), userId },
+    where: { ...classScope(role, userId), id: Number(id) },
     include: {
       _count: { select: { students: true } },
       teacher: { select: { id: true, name: true, email: true } },
@@ -118,9 +119,9 @@ export const createClass = async (userId, classData) => {
   return formatClass(classRecord);
 };
 
-export const updateClass = async (userId, id, classData) => {
+export const updateClass = async (userId, role, id, classData) => {
   const existing = await prisma.class.findFirst({
-    where: { id: Number(id), userId },
+    where: { ...classScope(role, userId), id: Number(id) },
     select: { id: true },
   });
 
@@ -156,14 +157,18 @@ export const updateClass = async (userId, id, classData) => {
   return formatClass(classRecord);
 };
 
-export const deleteClass = async (userId, id) => {
+export const deleteClass = async (userId, role, id) => {
   const existing = await prisma.class.findFirst({
-    where: { id: Number(id), userId },
-    select: { id: true },
+    where: { ...classScope(role, userId), id: Number(id) },
+    select: { id: true, userId: true },
   });
 
   if (!existing) {
     return null;
+  }
+
+  if (!sharesInstituteData(role) && existing.userId !== userId) {
+    return { error: "CLASS_DELETE_FORBIDDEN" };
   }
 
   await prisma.class.delete({ where: { id: Number(id) } });
@@ -171,9 +176,9 @@ export const deleteClass = async (userId, id) => {
   return true;
 };
 
-export const getClassSchedules = async (userId, classId) => {
+export const getClassSchedules = async (userId, role, classId) => {
   const classRecord = await prisma.class.findFirst({
-    where: { id: Number(classId), userId },
+    where: { ...classScope(role, userId), id: Number(classId) },
     select: { id: true },
   });
 
@@ -189,9 +194,9 @@ export const getClassSchedules = async (userId, classId) => {
   return schedules.map(formatSchedule);
 };
 
-export const createClassSchedule = async (userId, classId, scheduleData) => {
+export const createClassSchedule = async (userId, role, classId, scheduleData) => {
   const classRecord = await prisma.class.findFirst({
-    where: { id: Number(classId), userId },
+    where: { ...classScope(role, userId), id: Number(classId) },
     select: { id: true },
   });
 
@@ -213,11 +218,11 @@ export const createClassSchedule = async (userId, classId, scheduleData) => {
   return formatSchedule(schedule);
 };
 
-export const updateClassSchedule = async (userId, scheduleId, scheduleData) => {
+export const updateClassSchedule = async (userId, role, scheduleId, scheduleData) => {
   const schedule = await prisma.classSchedule.findFirst({
     where: {
       id: Number(scheduleId),
-      class: { userId },
+      class: classScope(role, userId),
     },
     select: { id: true },
   });
@@ -242,11 +247,11 @@ export const updateClassSchedule = async (userId, scheduleId, scheduleData) => {
   return formatSchedule(updated);
 };
 
-export const deleteClassSchedule = async (userId, scheduleId) => {
+export const deleteClassSchedule = async (userId, role, scheduleId) => {
   const schedule = await prisma.classSchedule.findFirst({
     where: {
       id: Number(scheduleId),
-      class: { userId },
+      class: classScope(role, userId),
     },
     select: { id: true },
   });
@@ -260,9 +265,9 @@ export const deleteClassSchedule = async (userId, scheduleId) => {
   return true;
 };
 
-export const getClassMaterials = async (userId, classId) => {
+export const getClassMaterials = async (userId, role, classId) => {
   const classRecord = await prisma.class.findFirst({
-    where: { id: Number(classId), userId },
+    where: { ...classScope(role, userId), id: Number(classId) },
     select: { id: true },
   });
 
@@ -278,9 +283,9 @@ export const getClassMaterials = async (userId, classId) => {
   return materials.map(formatMaterial);
 };
 
-export const createCourseMaterial = async (userId, classId, materialData) => {
+export const createCourseMaterial = async (userId, role, classId, materialData) => {
   const classRecord = await prisma.class.findFirst({
-    where: { id: Number(classId), userId },
+    where: { ...classScope(role, userId), id: Number(classId) },
     select: { id: true },
   });
 
@@ -301,11 +306,11 @@ export const createCourseMaterial = async (userId, classId, materialData) => {
   return formatMaterial(material);
 };
 
-export const updateCourseMaterial = async (userId, materialId, materialData) => {
+export const updateCourseMaterial = async (userId, role, materialId, materialData) => {
   const material = await prisma.courseMaterial.findFirst({
     where: {
       id: Number(materialId),
-      class: { userId },
+      class: classScope(role, userId),
     },
     select: { id: true },
   });
@@ -330,11 +335,11 @@ export const updateCourseMaterial = async (userId, materialId, materialData) => 
   return formatMaterial(updated);
 };
 
-export const deleteCourseMaterial = async (userId, materialId) => {
+export const deleteCourseMaterial = async (userId, role, materialId) => {
   const material = await prisma.courseMaterial.findFirst({
     where: {
       id: Number(materialId),
-      class: { userId },
+      class: classScope(role, userId),
     },
     select: { id: true },
   });

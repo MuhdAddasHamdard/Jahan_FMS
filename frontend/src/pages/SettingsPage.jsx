@@ -8,9 +8,14 @@ import { useAuth } from "../auth/auth-context";
 import { useTheme } from "../theme/theme-context";
 import { useToast } from "../hooks/useToast";
 import { fileToAvatarDataUrl } from "../utils/image";
+import { PASSWORD_RULE, passwordLengthError, passwordMatchError } from "../utils/password";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100";
+
+const passwordInputClass = `${inputClass} border-red-400 focus:border-red-500 focus:ring-red-100`;
+
+const errorTextClass = "mt-1 text-[11px] font-semibold text-red-600";
 
 const labelClass = "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500";
 
@@ -46,6 +51,11 @@ const SettingsPage = () => {
     currentPassword: "",
     password: "",
     confirmPassword: "",
+  });
+  const [passwordTouched, setPasswordTouched] = useState({
+    currentPassword: false,
+    password: false,
+    confirmPassword: false,
   });
   const [institute, setInstitute] = useState(null);
   const [instituteDraft, setInstituteDraft] = useState({
@@ -140,20 +150,47 @@ const SettingsPage = () => {
     }
   };
 
+  const passwordErrors = {
+    currentPassword:
+      !password.currentPassword && passwordTouched.currentPassword
+        ? "Enter your current password"
+        : "",
+    password: passwordLengthError(password.password),
+    confirmPassword: password.confirmPassword
+      ? passwordMatchError(password.confirmPassword, password.password)
+      : passwordTouched.confirmPassword
+        ? "Confirm your new password"
+        : "",
+  };
+
+  const showPasswordError = (key) =>
+    passwordTouched[key] ? passwordErrors[key] : "";
+
+  const passwordFormValid =
+    Boolean(password.currentPassword) &&
+    Boolean(password.password) &&
+    Boolean(password.confirmPassword) &&
+    !passwordErrors.currentPassword &&
+    !passwordErrors.password &&
+    !passwordErrors.confirmPassword;
+
   const handlePasswordSubmit = async (event) => {
     event.preventDefault();
     setError("");
 
-    if (!password.currentPassword) {
-      setError("Current password is required");
-      return;
-    }
-    if (password.password.length < 8) {
-      setError("New password must be at least 8 characters");
-      return;
-    }
-    if (password.password !== password.confirmPassword) {
-      setError("New passwords do not match");
+    setPasswordTouched({
+      currentPassword: true,
+      password: true,
+      confirmPassword: true,
+    });
+
+    if (!passwordFormValid) {
+      setError(
+        passwordErrors.currentPassword ||
+          passwordErrors.password ||
+          passwordErrors.confirmPassword ||
+          "Check the password fields below",
+      );
       return;
     }
 
@@ -164,6 +201,11 @@ const SettingsPage = () => {
         currentPassword: password.currentPassword,
       });
       setPassword({ currentPassword: "", password: "", confirmPassword: "" });
+      setPasswordTouched({
+        currentPassword: false,
+        password: false,
+        confirmPassword: false,
+      });
       toast.success("Password changed");
     } catch (err) {
       toast.error(err.message);
@@ -297,15 +339,29 @@ const SettingsPage = () => {
                   id="current-password"
                   type="password"
                   value={password.currentPassword}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     setPassword((current) => ({
                       ...current,
                       currentPassword: event.target.value,
-                    }))
+                    }));
+                    setPasswordTouched((current) => ({
+                      ...current,
+                      currentPassword: true,
+                    }));
+                  }}
+                  className={
+                    showPasswordError("currentPassword")
+                      ? passwordInputClass
+                      : inputClass
                   }
-                  className={inputClass}
+                  aria-invalid={Boolean(showPasswordError("currentPassword"))}
                   autoComplete="current-password"
                 />
+                {showPasswordError("currentPassword") && (
+                  <p className={errorTextClass} role="alert">
+                    {showPasswordError("currentPassword")}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -316,15 +372,37 @@ const SettingsPage = () => {
                   id="new-password"
                   type="password"
                   value={password.password}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     setPassword((current) => ({
                       ...current,
                       password: event.target.value,
-                    }))
+                    }));
+                    setPasswordTouched((current) => ({
+                      ...current,
+                      password: true,
+                    }));
+                  }}
+                  className={
+                    showPasswordError("password") ? passwordInputClass : inputClass
                   }
-                  className={inputClass}
+                  aria-invalid={Boolean(showPasswordError("password"))}
                   autoComplete="new-password"
                 />
+                <p
+                  className={`mt-1 text-[11px] font-semibold ${
+                    PASSWORD_RULE.test(password.password)
+                      ? "text-teal-600"
+                      : "text-slate-400"
+                  }`}
+                >
+                  {PASSWORD_RULE.test(password.password) ? "✓ " : ""}
+                  {PASSWORD_RULE.label}
+                </p>
+                {showPasswordError("password") && (
+                  <p className={errorTextClass} role="alert">
+                    {showPasswordError("password")}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -335,15 +413,29 @@ const SettingsPage = () => {
                   id="confirm-password"
                   type="password"
                   value={password.confirmPassword}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     setPassword((current) => ({
                       ...current,
                       confirmPassword: event.target.value,
-                    }))
+                    }));
+                    setPasswordTouched((current) => ({
+                      ...current,
+                      confirmPassword: true,
+                    }));
+                  }}
+                  className={
+                    showPasswordError("confirmPassword")
+                      ? passwordInputClass
+                      : inputClass
                   }
-                  className={inputClass}
+                  aria-invalid={Boolean(showPasswordError("confirmPassword"))}
                   autoComplete="new-password"
                 />
+                {showPasswordError("confirmPassword") && (
+                  <p className={errorTextClass} role="alert">
+                    {showPasswordError("confirmPassword")}
+                  </p>
+                )}
               </div>
 
               <SaveButton submitting={passwordSubmitting} />

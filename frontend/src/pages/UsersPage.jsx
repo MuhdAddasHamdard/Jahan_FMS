@@ -6,9 +6,10 @@ import Spinner from "../components/Spinner";
 import Alert from "../components/Alert";
 import Modal from "../components/Modal";
 import ConfirmDialog from "../components/ConfirmDialog";
-import { FormField, inputClass } from "../components/FormField";
+import { FormField, inputClass, errorInputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
 import { formatDate } from "../utils/format";
+import { passwordLengthError } from "../utils/password";
 
 const ROLES = ["ADMIN", "FINANCE", "TEACHER", "STUDENT"];
 
@@ -92,6 +93,10 @@ const UsersPage = () => {
     setEditing(targetUser);
     setEditValue({ name: targetUser.name, email: targetUser.email, password: "" });
   };
+
+  const passwordError = editValue.password
+    ? passwordLengthError(editValue.password)
+    : "";
 
   const handleUpdate = async (event) => {
     event.preventDefault();
@@ -252,7 +257,7 @@ const UsersPage = () => {
             <button
               type="submit"
               form="user-edit-form"
-              disabled={saving}
+              disabled={saving || Boolean(passwordError)}
               className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
             >
               {saving ? "Saving..." : "Save changes"}
@@ -289,6 +294,7 @@ const UsersPage = () => {
             label="New password"
             htmlFor="user-edit-password"
             hint="Leave empty to keep the current password"
+            error={passwordError}
           >
             <input
               id="user-edit-password"
@@ -296,7 +302,8 @@ const UsersPage = () => {
               value={editValue.password}
               onChange={(event) => setEditValue((current) => ({ ...current, password: event.target.value }))}
               placeholder="At least 8 characters"
-              className={inputClass}
+              className={passwordError ? errorInputClass : inputClass}
+              aria-invalid={Boolean(passwordError)}
             />
           </FormField>
         </form>

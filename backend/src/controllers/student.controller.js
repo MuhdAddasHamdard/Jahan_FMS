@@ -13,7 +13,7 @@ import { Prisma } from "../../generated/prisma/client";
 
 export const getStudents = async (req, res) => {
   try {
-    const students = await getAllStudents(req.user.id, {
+    const students = await getAllStudents(req.user.id, req.user.role, {
       status: req.query.status,
       classId: req.query.classId,
     });
@@ -55,7 +55,7 @@ export const createStudentController = async (req, res) => {
 
 export const updateStudentController = async (req, res) => {
   try {
-    const student = await updateStudent(req.user.id, req.params.id, req.body);
+    const student = await updateStudent(req.user.id, req.user.role, req.params.id, req.body);
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
     }
@@ -74,7 +74,11 @@ export const updateStudentController = async (req, res) => {
 
 export const deleteStudentController = async (req, res) => {
   try {
-    const result = await deleteStudent(req.user.id, req.params.id);
+    const result = await deleteStudent(req.user.id, req.user.role, req.params.id);
+    if (result?.error) {
+      const mapped = businessErrorToResponse(result.error);
+      return res.status(mapped.status).json({ message: mapped.message });
+    }
     if (!result) {
       return res.status(404).json({ message: "Student not found" });
     }
@@ -100,7 +104,7 @@ export const getMyPortalController = async (req, res) => {
 
 export const linkStudentAccountController = async (req, res) => {
   try {
-    const result = await linkStudentAccount(req.user.id, req.params.id, req.body);
+    const result = await linkStudentAccount(req.user.id, req.user.role, req.params.id, req.body);
     if (result.error) {
       const mapped = businessErrorToResponse(result.error);
       return res.status(mapped.status).json({ message: mapped.message });
@@ -120,7 +124,7 @@ export const linkStudentAccountController = async (req, res) => {
 
 export const unlinkStudentAccountController = async (req, res) => {
   try {
-    const result = await unlinkStudentAccount(req.user.id, req.params.id);
+    const result = await unlinkStudentAccount(req.user.id, req.user.role, req.params.id);
     if (result.error) {
       const mapped = businessErrorToResponse(result.error);
       return res.status(mapped.status).json({ message: mapped.message });

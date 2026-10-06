@@ -32,19 +32,19 @@ export const getReportSummary = async (userId, { from, to } = {}) => {
 
   const [receipts, refunds, salaryPayments, expenses] = await Promise.all([
     prisma.receipt.findMany({
-      where: { userId, paidAt: dateWhere },
+      where: { paidAt: dateWhere },
       select: { amount: true, paidAt: true },
     }),
     prisma.refund.findMany({
-      where: { userId, refundedOn: dateWhere },
+      where: { refundedOn: dateWhere },
       select: { amount: true, refundedOn: true },
     }),
     prisma.salaryPayment.findMany({
-      where: { userId, paidOn: dateWhere },
+      where: { paidOn: dateWhere },
       select: { amount: true, paidOn: true },
     }),
     prisma.expense.findMany({
-      where: { userId, paidOn: dateWhere },
+      where: { paidOn: dateWhere },
       select: { amount: true, paidOn: true },
     }),
   ]);
@@ -95,10 +95,10 @@ export const getReportSummary = async (userId, { from, to } = {}) => {
 };
 
 export const getInstituteReport = async (userId, { from, to } = {}) => {
-  const paidWhere = { userId };
-  const refundedWhere = { userId };
-  const salaryWhere = { userId };
-  const expenseWhere = { userId };
+  const paidWhere = {};
+  const refundedWhere = {};
+  const salaryWhere = {};
+  const expenseWhere = {};
 
   if (from || to) {
     paidWhere.paidAt = buildDateWhere(from, to);
@@ -131,7 +131,6 @@ export const getInstituteReport = async (userId, { from, to } = {}) => {
       prisma.expense.count({ where: expenseWhere }),
       prisma.feeInstallment.findMany({
         where: {
-          userId,
           status: {
             in: [INSTALLMENT_STATUSES[0], INSTALLMENT_STATUSES[1]],
           },

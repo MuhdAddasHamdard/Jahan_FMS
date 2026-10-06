@@ -6,6 +6,7 @@ import {
   getJson,
   uniqueEmail,
   between,
+  cleanupTestUsers,
 } from "./helpers.js";
 import prisma from "../src/prisma";
 
@@ -56,6 +57,7 @@ before(async () => {
 after(async () => {
   await prisma.receipt.deleteMany({ where: { userId } });
   await prisma.user.delete({ where: { id: userId } });
+  await cleanupTestUsers();
   await new Promise((resolve) => server.close(resolve));
 });
 
@@ -220,6 +222,11 @@ test("fee plans with payments cannot be deleted", async () => {
 
 test("GET /reports/institute shows fee collections and outstanding dues", async () => {
   const from = new Date().toISOString();
+  const to = new Date(Date.now() + 60000).toISOString();
+  const rangeUrl = `/reports/institute?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  const before = await get(rangeUrl);
+  assert.equal(before.status, 200);
+
   const feeType = await post("/fees/types", {
     name: "Report Fee",
     amount: 2000,
@@ -243,15 +250,14 @@ test("GET /reports/institute shows fee collections and outstanding dues", async 
     amount: 500,
   });
 
-  const to = new Date(Date.now() + 5000).toISOString();
-  const { status, data } = await get(`/reports/institute?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+  const { status, data } = await get(rangeUrl);
 
   assert.equal(status, 200);
-  assert.equal(data.totals.feeCount, 1);
-  assert.equal(data.totals.feeCollected, 500);
-  assert.equal(data.totals.netCollected, 500);
-  assert.equal(data.totals.outstandingDues, 1500);
-  assert.equal(data.totals.studentsWithDues, 1);
+  assert.equal(data.totals.feeCount, before.data.totals.feeCount + 1);
+  assert.equal(data.totals.feeCollected, before.data.totals.feeCollected + 500);
+  assert.equal(data.totals.netCollected, before.data.totals.netCollected + 500);
+  assert.equal(data.totals.outstandingDues, before.data.totals.outstandingDues + 1500);
+  assert.equal(data.totals.studentsWithDues, before.data.totals.studentsWithDues + 1);
 
   await prisma.receipt.deleteMany({ where: { userId } });
   await prisma.studentFee.delete({ where: { id: plan.data.id } });

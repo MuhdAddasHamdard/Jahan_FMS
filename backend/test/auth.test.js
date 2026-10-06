@@ -1,6 +1,6 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { startServer, postJson, getJson, uniqueEmail } from "./helpers.js";
+import { startServer, postJson, getJson, uniqueEmail, cleanupTestUsers } from "./helpers.js";
 import prisma from "../src/prisma";
 
 let server;
@@ -11,6 +11,7 @@ before(async () => {
 });
 
 after(async () => {
+  await cleanupTestUsers();
   await new Promise((resolve) => server.close(resolve));
 });
 

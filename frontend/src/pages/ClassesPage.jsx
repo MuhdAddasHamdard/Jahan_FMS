@@ -353,6 +353,7 @@ const ScheduleFormInline = ({ classRecord, onAddSchedule }) => {
 const ClassRow = ({
   classRecord,
   onDelete,
+  canDelete,
   onToggle,
   isOpen,
   onAddSchedule,
@@ -404,12 +405,14 @@ const ClassRow = ({
         >
           {isOpen ? "Hide details" : "Details"}
         </button>
-        <button
-          onClick={() => onDelete(classRecord)}
-          className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
-        >
-          Delete
-        </button>
+        {canDelete && (
+          <button
+            onClick={() => onDelete(classRecord)}
+            className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
+          >
+            Delete
+          </button>
+        )}
       </div>
     </div>
     {isOpen && (
@@ -431,6 +434,7 @@ const ClassRow = ({
 const ClassesPage = () => {
   const { isAdmin, isFinance } = useAuth();
   const canAssignTeacher = isAdmin || isFinance;
+  const canDeleteClass = isAdmin || isFinance;
   const toast = useToast();
   const [classList, setClassList] = useState([]);
   const [teachers, setTeachers] = useState([]);
@@ -772,6 +776,7 @@ const ClassesPage = () => {
                 onToggle={handleToggle}
                 onEditClass={openEditClass}
                 onDelete={(record) => setDeleting({ type: "class", record })}
+                canDelete={canDeleteClass}
                 onAddSchedule={addSchedule}
                 onAddMaterial={addMaterial}
                 onDeleteSchedule={(record) =>

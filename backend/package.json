@@ -6,7 +6,7 @@
   "scripts": {
     "start": "tsx src/server.js",
     "seed": "tsx src/scripts/seed.js",
-    "test": "tsx --test \"test/*.test.js\""
+    "test": "tsx --test --test-concurrency=1 \"test/*.test.js\""
   },
   "keywords": [],
   "author": "",

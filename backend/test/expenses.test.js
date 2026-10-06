@@ -5,6 +5,7 @@ import {
   postJson,
   getJson,
   uniqueEmail,
+  cleanupTestUsers,
 } from "./helpers.js";
 import prisma from "../src/prisma";
 
@@ -70,6 +71,7 @@ before(async () => {
 after(async () => {
   await prisma.expense.deleteMany({ where: { userId } });
   await prisma.user.delete({ where: { id: userId } });
+  await cleanupTestUsers();
   await new Promise((resolve) => server.close(resolve));
 });
 
@@ -99,13 +101,17 @@ test("POST /expenses requires a description and positive amount", async () => {
 });
 
 test("GET /expenses lists expenses newest first", async () => {
+  const before = await get("/expenses");
+  assert.equal(before.status, 200);
+
   await post("/expenses", { description: "First", amount: 100 });
   await post("/expenses", { description: "Second", amount: 200 });
 
   const { status, data } = await get("/expenses");
   assert.equal(status, 200);
-  assert.equal(data.length, 2);
+  assert.equal(data.length, before.data.length + 2);
   assert.equal(data[0].description, "Second");
+  assert.equal(data[1].description, "First");
 
   await prisma.expense.deleteMany({ where: { userId } });
 });

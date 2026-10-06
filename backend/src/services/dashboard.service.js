@@ -1,6 +1,8 @@
 import prisma from "../prisma";
 import { toNumber } from "../utils/money";
 import { INSTALLMENT_STATUSES } from "../constants/fee";
+import { ROLES } from "../constants/roles";
+import { classScope, studentScope } from "../utils/scope";
 
 const monthWindow = () => {
   const now = new Date();
@@ -141,8 +143,8 @@ const buildSummary = async (scope) => {
   };
 };
 
-export const getDashboardSummary = async (userId) => {
-  return buildSummary({ userId });
+export const getDashboardSummary = async () => {
+  return buildSummary({});
 };
 
 export const getAdminDashboardSummary = async () => {
@@ -158,12 +160,13 @@ export const getAdminDashboardSummary = async () => {
 };
 
 export const getTeacherDashboard = async (userId) => {
+  const scope = classScope(ROLES.TEACHER, userId);
   const [classCount, studentCount, materialCount, classes] = await Promise.all([
-    prisma.class.count({ where: { userId } }),
-    prisma.student.count({ where: { userId } }),
-    prisma.courseMaterial.count({ where: { userId } }),
+    prisma.class.count({ where: scope }),
+    prisma.student.count({ where: studentScope(ROLES.TEACHER, userId) }),
+    prisma.courseMaterial.count({ where: { class: scope } }),
     prisma.class.findMany({
-      where: { userId },
+      where: scope,
       include: {
         _count: { select: { students: true } },
         teacher: { select: { id: true, name: true, email: true } },

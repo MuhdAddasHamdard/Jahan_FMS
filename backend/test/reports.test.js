@@ -6,6 +6,7 @@ import {
   getJson,
   uniqueEmail,
   between,
+  cleanupTestUsers,
 } from "./helpers.js";
 import prisma from "../src/prisma";
 
@@ -40,10 +41,14 @@ before(async () => {
 
 after(async () => {
   await prisma.user.deleteMany({ where: { id: userId } });
+  await cleanupTestUsers();
   await new Promise((resolve) => server.close(resolve));
 });
 
 test("GET /reports/summary computes income, refunds, salaries and expenses", async () => {
+  const before = await getJson(baseUrl, "/reports/summary", token);
+  assert.equal(before.status, 200);
+
   const feeType = await postJson(
     baseUrl,
     "/fees/types",
@@ -105,13 +110,13 @@ test("GET /reports/summary computes income, refunds, salaries and expenses", asy
 
   const { status, data } = await getJson(baseUrl, "/reports/summary", token);
   assert.equal(status, 200);
-  assert.equal(data.totals.totalIncome, 500);
-  assert.equal(data.totals.totalRefunds, 200);
-  assert.equal(data.totals.totalSalaries, 300);
-  assert.equal(data.totals.totalExpenses, 100);
-  assert.equal(data.totals.totalExpense, 600);
-  assert.equal(data.totals.net, -100);
-  assert.equal(data.totals.feeCount, 1);
+  assert.equal(data.totals.totalIncome, before.data.totals.totalIncome + 500);
+  assert.equal(data.totals.totalRefunds, before.data.totals.totalRefunds + 200);
+  assert.equal(data.totals.totalSalaries, before.data.totals.totalSalaries + 300);
+  assert.equal(data.totals.totalExpenses, before.data.totals.totalExpenses + 100);
+  assert.equal(data.totals.totalExpense, before.data.totals.totalExpense + 600);
+  assert.equal(data.totals.net, before.data.totals.net - 100);
+  assert.equal(data.totals.feeCount, before.data.totals.feeCount + 1);
   assert.ok(Array.isArray(data.byMonth));
   assert.ok(data.byMonth.length >= 1);
 
@@ -126,6 +131,15 @@ test("GET /reports/summary computes income, refunds, salaries and expenses", asy
 });
 
 test("GET /reports/summary supports date range filtering and rejects bad ranges", async () => {
+  const beforeRange = await getJson(
+    baseUrl,
+    "/reports/summary?from=2026-01-01&to=2026-01-31",
+    token,
+  );
+  assert.equal(beforeRange.status, 200);
+  const beforeAll = await getJson(baseUrl, "/reports/summary", token);
+  assert.equal(beforeAll.status, 200);
+
   const feeType = await postJson(
     baseUrl,
     "/fees/types",
@@ -175,10 +189,13 @@ test("GET /reports/summary supports date range filtering and rejects bad ranges"
     token,
   );
   assert.equal(filtered.status, 200);
-  assert.equal(filtered.data.totals.totalIncome, 100);
+  assert.equal(
+    filtered.data.totals.totalIncome,
+    beforeRange.data.totals.totalIncome + 100,
+  );
 
   const unfiltered = await getJson(baseUrl, "/reports/summary", token);
-  assert.equal(unfiltered.data.totals.totalIncome, 300);
+  assert.equal(unfiltered.data.totals.totalIncome, beforeAll.data.totals.totalIncome + 300);
 
   const badRange = await getJson(
     baseUrl,
@@ -195,6 +212,11 @@ test("GET /reports/summary supports date range filtering and rejects bad ranges"
 
 test("GET /reports/institute shows collections, expenses and outstanding dues", async () => {
   const from = new Date().toISOString();
+  const to = new Date(Date.now() + 60000).toISOString();
+  const rangeUrl = `/reports/institute?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  const before = await getJson(baseUrl, rangeUrl, token);
+  assert.equal(before.status, 200);
+
   const feeType = await postJson(
     baseUrl,
     "/fees/types",
@@ -230,22 +252,17 @@ test("GET /reports/institute shows collections, expenses and outstanding dues", 
     token,
   );
 
-  const to = new Date(Date.now() + 5000).toISOString();
-  const { status, data } = await getJson(
-    baseUrl,
-    `/reports/institute?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
-    token,
-  );
+  const { status, data } = await getJson(baseUrl, rangeUrl, token);
 
   assert.equal(status, 200);
-  assert.equal(data.totals.feeCount, 1);
-  assert.equal(data.totals.feeCollected, 500);
-  assert.equal(data.totals.netCollected, 500);
-  assert.equal(data.totals.expenseCount, 1);
-  assert.equal(data.totals.expenses, 100);
-  assert.equal(data.totals.netResult, 400);
-  assert.equal(data.totals.outstandingDues, 1500);
-  assert.equal(data.totals.studentsWithDues, 1);
+  assert.equal(data.totals.feeCount, before.data.totals.feeCount + 1);
+  assert.equal(data.totals.feeCollected, before.data.totals.feeCollected + 500);
+  assert.equal(data.totals.netCollected, before.data.totals.netCollected + 500);
+  assert.equal(data.totals.expenseCount, before.data.totals.expenseCount + 1);
+  assert.equal(data.totals.expenses, before.data.totals.expenses + 100);
+  assert.equal(data.totals.netResult, before.data.totals.netResult + 400);
+  assert.equal(data.totals.outstandingDues, before.data.totals.outstandingDues + 1500);
+  assert.equal(data.totals.studentsWithDues, before.data.totals.studentsWithDues + 1);
 
   await prisma.expense.deleteMany({ where: { userId } });
   await prisma.receipt.deleteMany({ where: { userId } });

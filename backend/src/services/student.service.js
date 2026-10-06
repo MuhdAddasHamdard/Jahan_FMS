@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import prisma from "../prisma";
 import { toNumber } from "../utils/money";
 import { ROLES } from "../constants/roles";
+import { sharesInstituteData, studentScope } from "../utils/scope";
 
 const formatStudent = (student) => ({
   id: student.id,
@@ -88,10 +89,10 @@ const formatFeePlan = (plan) => {
   };
 };
 
-export const getAllStudents = async (userId, filters = {}) => {
+export const getAllStudents = async (userId, role, filters = {}) => {
   const { status, classId } = filters;
 
-  const where = { userId };
+  const where = { ...studentScope(role, userId) };
 
   if (status) {
     where.status = status;
@@ -117,7 +118,7 @@ export const getStudentById = async (userId, id, role) => {
   const isTeacher = role === ROLES.TEACHER;
 
   const student = await prisma.student.findFirst({
-    where: { id: Number(id), userId },
+    where: { ...studentScope(role, userId), id: Number(id) },
     include: {
       class: studentClassInclude,
       account: isTeacher
@@ -184,9 +185,9 @@ export const createStudent = async (userId, studentData) => {
   return formatStudent(student);
 };
 
-export const updateStudent = async (userId, id, studentData) => {
+export const updateStudent = async (userId, role, id, studentData) => {
   const existing = await prisma.student.findFirst({
-    where: { id: Number(id), userId },
+    where: { ...studentScope(role, userId), id: Number(id) },
     select: { id: true },
   });
 
@@ -219,14 +220,18 @@ export const updateStudent = async (userId, id, studentData) => {
   return formatStudent(student);
 };
 
-export const deleteStudent = async (userId, id) => {
+export const deleteStudent = async (userId, role, id) => {
   const existing = await prisma.student.findFirst({
-    where: { id: Number(id), userId },
-    select: { id: true },
+    where: { ...studentScope(role, userId), id: Number(id) },
+    select: { id: true, userId: true },
   });
 
   if (!existing) {
     return null;
+  }
+
+  if (!sharesInstituteData(role) && existing.userId !== userId) {
+    return { error: "STUDENT_DELETE_FORBIDDEN" };
   }
 
   await prisma.student.delete({ where: { id: Number(id) } });
@@ -247,14 +252,18 @@ export const getTotalPaidForStudent = async (userId, studentId) => {
   return installments.reduce((sum, installment) => sum + toNumber(installment.paidAmount), 0);
 };
 
-export const linkStudentAccount = async (userId, studentId, accountData) => {
+export const linkStudentAccount = async (userId, role, studentId, accountData) => {
   const student = await prisma.student.findFirst({
-    where: { id: Number(studentId), userId },
-    select: { id: true, name: true, accountId: true },
+    where: { ...studentScope(role, userId), id: Number(studentId) },
+    select: { id: true, name: true, accountId: true, userId: true },
   });
 
   if (!student) {
     return { error: "STUDENT_NOT_FOUND" };
+  }
+
+  if (!sharesInstituteData(role) && student.userId !== userId) {
+    return { error: "STUDENT_ACCOUNT_FORBIDDEN" };
   }
 
   if (student.accountId) {
@@ -290,14 +299,18 @@ export const linkStudentAccount = async (userId, studentId, accountData) => {
   };
 };
 
-export const unlinkStudentAccount = async (userId, studentId) => {
+export const unlinkStudentAccount = async (userId, role, studentId) => {
   const student = await prisma.student.findFirst({
-    where: { id: Number(studentId), userId },
-    select: { id: true, accountId: true },
+    where: { ...studentScope(role, userId), id: Number(studentId) },
+    select: { id: true, accountId: true, userId: true },
   });
 
   if (!student) {
     return { error: "STUDENT_NOT_FOUND" };
+  }
+
+  if (!sharesInstituteData(role) && student.userId !== userId) {
+    return { error: "STUDENT_ACCOUNT_FORBIDDEN" };
   }
 
   if (!student.accountId) {

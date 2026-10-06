@@ -20,13 +20,16 @@ const statusClass = (status) => {
 
 const PlanFields = ({ value, onChange, students, feeTypes, idPrefix }) => (
   <div className="grid gap-3 sm:grid-cols-2">
-    <FormField label="Student" htmlFor={`${idPrefix}-student`}>
+    <FormField
+      label="Student"
+      htmlFor={`${idPrefix}-student`}
+      hint="The student this plan is charged to"
+    >
       <select
         id={`${idPrefix}-student`}
         value={value.studentId}
         onChange={(event) => onChange({ ...value, studentId: event.target.value })}
-        disabled
-        className={`${inputClass} cursor-not-allowed bg-slate-50 text-slate-500`}
+        className={inputClass}
       >
         <option value="">
           {students.length > 0 ? "Select student" : "No students available"}

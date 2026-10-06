@@ -4,7 +4,7 @@ import { toNumber } from "../utils/money";
 export const getRefunds = async (userId, filters = {}) => {
   const { studentId } = filters;
 
-  const where = { userId };
+  const where = {};
 
   if (studentId && !Number.isNaN(Number(studentId))) {
     where.studentId = Number(studentId);
@@ -31,7 +31,7 @@ export const getRefunds = async (userId, filters = {}) => {
 export const createRefund = async (userId, { studentId, amount, reason, refundedOn }) => {
   return prisma.$transaction(async (tx) => {
     const student = await tx.student.findFirst({
-      where: { id: Number(studentId), userId },
+      where: { id: Number(studentId) },
       select: { id: true, name: true, admissionNo: true },
     });
 
@@ -48,7 +48,7 @@ export const createRefund = async (userId, { studentId, amount, reason, refunded
     });
 
     const alreadyRefundedRows = await tx.refund.aggregate({
-      where: { studentId: student.id, userId },
+      where: { studentId: student.id },
       _sum: { amount: true },
     });
 
@@ -88,7 +88,7 @@ export const createRefund = async (userId, { studentId, amount, reason, refunded
 export const updateRefund = async (userId, id, { amount, reason, refundedOn }) => {
   return prisma.$transaction(async (tx) => {
     const refund = await tx.refund.findFirst({
-      where: { id: Number(id), userId },
+      where: { id: Number(id) },
       select: { id: true, studentId: true, amount: true },
     });
 
@@ -100,12 +100,12 @@ export const updateRefund = async (userId, id, { amount, reason, refundedOn }) =
 
     if (amount !== undefined) {
       const paidRows = await tx.feeInstallment.aggregate({
-        where: { userId, studentFee: { studentId: refund.studentId } },
+        where: { studentFee: { studentId: refund.studentId } },
         _sum: { paidAmount: true },
       });
 
       const alreadyRefundedRows = await tx.refund.aggregate({
-        where: { studentId: refund.studentId, userId, id: { not: refund.id } },
+        where: { studentId: refund.studentId, id: { not: refund.id } },
         _sum: { amount: true },
       });
 
@@ -141,7 +141,7 @@ export const updateRefund = async (userId, id, { amount, reason, refundedOn }) =
 
 export const deleteRefund = async (userId, id) => {
   const refund = await prisma.refund.findFirst({
-    where: { id: Number(id), userId },
+    where: { id: Number(id) },
     select: { id: true },
   });
 

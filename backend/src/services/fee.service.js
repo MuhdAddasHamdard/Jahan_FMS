@@ -44,7 +44,7 @@ const installmentsFor = (totalAmount, installmentCount) => {
 
 export const getAllFeeTypes = async (userId) => {
   const feeTypes = await prisma.feeType.findMany({
-    where: { userId },
+    where: {},
     orderBy: { name: "asc" },
   });
 
@@ -53,7 +53,7 @@ export const getAllFeeTypes = async (userId) => {
 
 export const getFeeTypeById = async (userId, id) => {
   const feeType = await prisma.feeType.findFirst({
-    where: { id: Number(id), userId },
+    where: { id: Number(id) },
   });
 
   return feeType ? formatFeeType(feeType) : null;
@@ -74,7 +74,7 @@ export const createFeeType = async (userId, feeTypeData) => {
 
 export const updateFeeType = async (userId, id, feeTypeData) => {
   const existing = await prisma.feeType.findFirst({
-    where: { id: Number(id), userId },
+    where: { id: Number(id) },
     select: { id: true },
   });
 
@@ -96,7 +96,7 @@ export const updateFeeType = async (userId, id, feeTypeData) => {
 
 export const deleteFeeType = async (userId, id) => {
   const existing = await prisma.feeType.findFirst({
-    where: { id: Number(id), userId },
+    where: { id: Number(id) },
     select: { id: true },
   });
 
@@ -105,7 +105,7 @@ export const deleteFeeType = async (userId, id) => {
   }
 
   const planCount = await prisma.studentFee.count({
-    where: { userId, feeTypeId: Number(id) },
+    where: { feeTypeId: Number(id) },
   });
 
   if (planCount > 0) {
@@ -119,7 +119,7 @@ export const deleteFeeType = async (userId, id) => {
 
 export const getAllFeePlans = async (userId) => {
   const plans = await prisma.studentFee.findMany({
-    where: { userId },
+    where: {},
     include: {
       student: { select: { id: true, admissionNo: true, name: true } },
       feeType: { select: { id: true, name: true } },
@@ -182,7 +182,7 @@ const formatPlan = (plan) => {
 
 export const getFeePlanById = async (userId, id) => {
   const plan = await prisma.studentFee.findFirst({
-    where: { id: Number(id), userId },
+    where: { id: Number(id) },
     include: planInclude,
   });
 
@@ -196,7 +196,7 @@ export const getFeePlanById = async (userId, id) => {
 export const createFeePlan = async (userId, { studentId, feeTypeId, totalAmount, installmentCount }) => {
   return prisma.$transaction(async (tx) => {
     const student = await tx.student.findFirst({
-      where: { id: Number(studentId), userId },
+      where: { id: Number(studentId) },
       select: { id: true },
     });
 
@@ -205,7 +205,7 @@ export const createFeePlan = async (userId, { studentId, feeTypeId, totalAmount,
     }
 
     const feeType = await tx.feeType.findFirst({
-      where: { id: Number(feeTypeId), userId },
+      where: { id: Number(feeTypeId) },
       select: { id: true, amount: true },
     });
 
@@ -251,7 +251,7 @@ export const createFeePlan = async (userId, { studentId, feeTypeId, totalAmount,
 export const updateFeePlan = async (userId, id, { feeTypeId, totalAmount, installmentCount }) => {
   return prisma.$transaction(async (tx) => {
     const plan = await tx.studentFee.findFirst({
-      where: { id: Number(id), userId },
+      where: { id: Number(id) },
       select: { id: true, feeTypeId: true, totalAmount: true, installmentCount: true },
     });
 
@@ -272,7 +272,7 @@ export const updateFeePlan = async (userId, id, { feeTypeId, totalAmount, instal
 
     if (feeTypeId !== undefined) {
       const feeType = await tx.feeType.findFirst({
-        where: { id: Number(feeTypeId), userId },
+        where: { id: Number(feeTypeId) },
         select: { id: true },
       });
 
@@ -324,7 +324,7 @@ export const updateFeePlan = async (userId, id, { feeTypeId, totalAmount, instal
 export const deleteFeePlan = async (userId, id) => {
   return prisma.$transaction(async (tx) => {
     const plan = await tx.studentFee.findFirst({
-      where: { id: Number(id), userId },
+      where: { id: Number(id) },
       select: { id: true },
     });
 
@@ -353,7 +353,7 @@ export const collectFeePayment = async (
 ) => {
   return prisma.$transaction(async (tx) => {
     const installment = await tx.feeInstallment.findFirst({
-      where: { id: Number(installmentId), userId },
+      where: { id: Number(installmentId) },
       include: {
         studentFee: {
           include: {
@@ -423,7 +423,7 @@ export const collectFeePayment = async (
 
 export const updateReceipt = async (userId, id, { notes } = {}) => {
   const existing = await prisma.receipt.findFirst({
-    where: { id: Number(id), userId },
+    where: { id: Number(id) },
     select: { id: true },
   });
 
@@ -447,7 +447,7 @@ export const updateReceipt = async (userId, id, { notes } = {}) => {
 
 export const getReceipts = async (userId) => {
   const receipts = await prisma.receipt.findMany({
-    where: { userId },
+    where: {},
     include: {
       installments: {
         include: {

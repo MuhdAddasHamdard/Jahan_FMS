@@ -17,7 +17,7 @@ import { businessErrorToResponse } from "../utils/errors";
 
 export const getClasses = async (req, res) => {
   try {
-    const classes = await getAllClasses(req.user.id);
+    const classes = await getAllClasses(req.user.id, req.user.role);
     res.status(200).json(classes);
   } catch (error) {
     console.error(error);
@@ -27,7 +27,7 @@ export const getClasses = async (req, res) => {
 
 export const getClass = async (req, res) => {
   try {
-    const classRecord = await getClassById(req.user.id, req.params.id);
+    const classRecord = await getClassById(req.user.id, req.user.role, req.params.id);
     if (!classRecord) {
       return res.status(404).json({ message: "Class not found" });
     }
@@ -54,7 +54,7 @@ export const createClassController = async (req, res) => {
 
 export const updateClassController = async (req, res) => {
   try {
-    const classRecord = await updateClass(req.user.id, req.params.id, req.body);
+    const classRecord = await updateClass(req.user.id, req.user.role, req.params.id, req.body);
     if (!classRecord) {
       return res.status(404).json({ message: "Class not found" });
     }
@@ -71,7 +71,11 @@ export const updateClassController = async (req, res) => {
 
 export const deleteClassController = async (req, res) => {
   try {
-    const result = await deleteClass(req.user.id, req.params.id);
+    const result = await deleteClass(req.user.id, req.user.role, req.params.id);
+    if (result?.error) {
+      const mapped = businessErrorToResponse(result.error);
+      return res.status(mapped.status).json({ message: mapped.message });
+    }
     if (!result) {
       return res.status(404).json({ message: "Class not found" });
     }
@@ -84,7 +88,7 @@ export const deleteClassController = async (req, res) => {
 
 export const getClassSchedulesController = async (req, res) => {
   try {
-    const schedules = await getClassSchedules(req.user.id, req.params.id);
+    const schedules = await getClassSchedules(req.user.id, req.user.role, req.params.id);
     if (schedules === null) {
       return res.status(404).json({ message: "Class not found" });
     }
@@ -97,7 +101,7 @@ export const getClassSchedulesController = async (req, res) => {
 
 export const createClassScheduleController = async (req, res) => {
   try {
-    const result = await createClassSchedule(req.user.id, req.params.id, req.body);
+    const result = await createClassSchedule(req.user.id, req.user.role, req.params.id, req.body);
     if (result.error) {
       const mapped = businessErrorToResponse(result.error);
       return res.status(mapped.status).json({ message: mapped.message });
@@ -112,7 +116,7 @@ export const createClassScheduleController = async (req, res) => {
 export const updateClassScheduleController = async (req, res) => {
   try {
     const result = await updateClassSchedule(
-      req.user.id,
+      req.user.id, req.user.role,
       req.params.scheduleId,
       req.body,
     );
@@ -128,7 +132,7 @@ export const updateClassScheduleController = async (req, res) => {
 
 export const deleteClassScheduleController = async (req, res) => {
   try {
-    const result = await deleteClassSchedule(req.user.id, req.params.scheduleId);
+    const result = await deleteClassSchedule(req.user.id, req.user.role, req.params.scheduleId);
     if (result === null) {
       return res.status(404).json({ message: "Schedule not found" });
     }
@@ -141,7 +145,7 @@ export const deleteClassScheduleController = async (req, res) => {
 
 export const getClassMaterialsController = async (req, res) => {
   try {
-    const materials = await getClassMaterials(req.user.id, req.params.id);
+    const materials = await getClassMaterials(req.user.id, req.user.role, req.params.id);
     if (materials === null) {
       return res.status(404).json({ message: "Class not found" });
     }
@@ -154,7 +158,7 @@ export const getClassMaterialsController = async (req, res) => {
 
 export const createCourseMaterialController = async (req, res) => {
   try {
-    const result = await createCourseMaterial(req.user.id, req.params.id, req.body);
+    const result = await createCourseMaterial(req.user.id, req.user.role, req.params.id, req.body);
     if (result.error) {
       const mapped = businessErrorToResponse(result.error);
       return res.status(mapped.status).json({ message: mapped.message });
@@ -169,7 +173,7 @@ export const createCourseMaterialController = async (req, res) => {
 export const updateCourseMaterialController = async (req, res) => {
   try {
     const result = await updateCourseMaterial(
-      req.user.id,
+      req.user.id, req.user.role,
       req.params.materialId,
       req.body,
     );
@@ -185,7 +189,7 @@ export const updateCourseMaterialController = async (req, res) => {
 
 export const deleteCourseMaterialController = async (req, res) => {
   try {
-    const result = await deleteCourseMaterial(req.user.id, req.params.materialId);
+    const result = await deleteCourseMaterial(req.user.id, req.user.role, req.params.materialId);
     if (result === null) {
       return res.status(404).json({ message: "Material not found" });
     }

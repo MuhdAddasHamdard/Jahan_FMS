@@ -6,9 +6,10 @@ import Spinner from "../components/Spinner";
 import Alert from "../components/Alert";
 import Modal from "../components/Modal";
 import ConfirmDialog from "../components/ConfirmDialog";
-import { FormField, inputClass } from "../components/FormField";
+import { FormField, inputClass, errorInputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
 import { formatNumber, formatDate } from "../utils/format";
+import { PASSWORD_RULE, passwordLengthError } from "../utils/password";
 
 const STATUSES = ["ACTIVE", "INACTIVE", "GRADUATED", "SUSPENDED"];
 
@@ -176,17 +177,27 @@ const AccountForm = ({ onSubmit, submitting, idPrefix }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const emailInvalid = !email.trim() || !email.trim().includes("@");
+  const emailError = emailInvalid && (Boolean(email) || submitted)
+    ? "A valid email is required"
+    : "";
+  const passwordError = !password
+    ? submitted
+      ? "Password is required"
+      : ""
+    : passwordLengthError(password);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
+    setSubmitted(true);
 
-    if (!email.trim() || !email.includes("@")) {
-      setError("A valid email is required");
+    if (emailInvalid) {
       return;
     }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+    if (passwordError) {
       return;
     }
 
@@ -199,6 +210,7 @@ const AccountForm = ({ onSubmit, submitting, idPrefix }) => {
       setName("");
       setEmail("");
       setPassword("");
+      setSubmitted(false);
     } catch (err) {
       setError(err.message);
     }
@@ -221,33 +233,43 @@ const AccountForm = ({ onSubmit, submitting, idPrefix }) => {
             className={inputClass}
           />
         </FormField>
-        <FormField label="Login email" htmlFor={`${idPrefix}-account-email`}>
+        <FormField
+          label="Login email"
+          htmlFor={`${idPrefix}-account-email`}
+          error={emailError}
+        >
           <input
             id={`${idPrefix}-account-email`}
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="e.g. ayesha@example.com"
-            className={inputClass}
+            className={emailError ? errorInputClass : inputClass}
+            aria-invalid={Boolean(emailError)}
           />
         </FormField>
         <FormField
           label="Password"
           htmlFor={`${idPrefix}-account-password`}
           hint="At least 8 characters"
+          error={passwordError}
+          success={
+            password && !passwordError ? PASSWORD_RULE.label + " ✓" : ""
+          }
         >
           <input
             id={`${idPrefix}-account-password`}
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className={inputClass}
+            className={passwordError ? errorInputClass : inputClass}
+            aria-invalid={Boolean(passwordError)}
           />
         </FormField>
       </div>
       <button
         type="submit"
-        disabled={submitting}
+        disabled={submitting || Boolean(emailError) || Boolean(passwordError)}
         className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
       >
         {submitting ? "Creating..." : "Create portal login"}
@@ -471,12 +493,14 @@ const StudentRow = ({
         >
           {isOpen ? "Hide details" : "Details"}
         </button>
-        <button
-          onClick={() => onDelete(student)}
-          className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
-        >
-          Delete
-        </button>
+        {!isTeacher && (
+          <button
+            onClick={() => onDelete(student)}
+            className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
+          >
+            Delete
+          </button>
+        )}
       </div>
     </div>
     {isOpen && (

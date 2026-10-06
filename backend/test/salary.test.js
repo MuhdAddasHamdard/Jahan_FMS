@@ -6,6 +6,7 @@ import {
   getJson,
   uniqueEmail,
   between,
+  cleanupTestUsers,
 } from "./helpers.js";
 import prisma from "../src/prisma";
 
@@ -56,6 +57,7 @@ before(async () => {
 after(async () => {
   await prisma.salaryPayment.deleteMany({ where: { userId } });
   await prisma.user.delete({ where: { id: userId } });
+  await cleanupTestUsers();
   await new Promise((resolve) => server.close(resolve));
 });
 

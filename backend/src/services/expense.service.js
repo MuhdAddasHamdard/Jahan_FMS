@@ -12,7 +12,7 @@ const formatExpense = (expense) => ({
 export const getExpenses = async (userId, filters = {}) => {
   const { from, to } = filters;
 
-  const where = { userId };
+  const where = {};
   if (from || to) {
     where.paidOn = {};
     if (from) {
@@ -33,7 +33,7 @@ export const getExpenses = async (userId, filters = {}) => {
 
 export const getExpenseById = async (userId, id) => {
   const expense = await prisma.expense.findFirst({
-    where: { id: Number(id), userId },
+    where: { id: Number(id) },
   });
 
   return expense ? formatExpense(expense) : null;
@@ -54,7 +54,7 @@ export const createExpense = async (userId, expenseData) => {
 
 export const updateExpense = async (userId, id, expenseData) => {
   const existing = await prisma.expense.findFirst({
-    where: { id: Number(id), userId },
+    where: { id: Number(id) },
     select: { id: true },
   });
 
@@ -79,7 +79,7 @@ export const updateExpense = async (userId, id, expenseData) => {
 
 export const deleteExpense = async (userId, id) => {
   const existing = await prisma.expense.findFirst({
-    where: { id: Number(id), userId },
+    where: { id: Number(id) },
     select: { id: true },
   });
 

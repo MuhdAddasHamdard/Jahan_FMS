@@ -1,4 +1,5 @@
 import app from "../src/app";
+import prisma from "../src/prisma";
 
 export const startServer = async () => {
   const server = app.listen(0);
@@ -79,3 +80,9 @@ export const patchJson = async (baseUrl, path, body, token) => {
 
 export const uniqueEmail = (prefix) =>
   `${prefix}.${Date.now()}.${between(1000, 9999)}@example.com`;
+
+// Institute data is shared between ADMIN and FINANCE, so every test file must
+// leave no @example.com users behind or the next run inherits their records.
+export const cleanupTestUsers = async () => {
+  await prisma.user.deleteMany({ where: { email: { endsWith: "@example.com" } } });
+};

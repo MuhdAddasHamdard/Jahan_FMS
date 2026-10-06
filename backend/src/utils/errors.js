@@ -11,6 +11,18 @@ export const businessErrorToResponse = (error) => {
     },
     FEETYPE_NOT_FOUND: { status: 404, message: "Fee type not found" },
     CLASS_NOT_FOUND: { status: 404, message: "Class not found" },
+    CLASS_DELETE_FORBIDDEN: {
+      status: 403,
+      message: "Only an admin or finance user can delete this class.",
+    },
+    STUDENT_DELETE_FORBIDDEN: {
+      status: 403,
+      message: "Only an admin or finance user can delete this student.",
+    },
+    STUDENT_ACCOUNT_FORBIDDEN: {
+      status: 403,
+      message: "Only an admin or finance user can manage this student's login.",
+    },
     PLAN_EXISTS: { status: 409, message: "This student already has this fee assigned" },
     PLAN_HAS_PAYMENTS: {
       status: 400,

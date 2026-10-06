@@ -10,6 +10,7 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({ email: false, password: false });
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -19,29 +20,47 @@ const Login = () => {
     return <Navigate to="/" replace />;
   }
 
-  const validateForm = () => {
-    const newErrors = {};
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!email) {
-      newErrors.email = "Email is required";
-    } else if (!emailPattern.test(email)) {
-      newErrors.email = "Please enter a valid email address";
+  const computeErrors = (emailValue, passwordValue, touchedFields) => {
+    const nextErrors = {};
+
+    if (touchedFields.email) {
+      if (!emailValue) {
+        nextErrors.email = "Email is required";
+      } else if (!emailPattern.test(emailValue)) {
+        nextErrors.email = "Please enter a valid email address";
+      }
     }
 
-    if (!password) {
-      newErrors.password = "Password is required";
+    if (touchedFields.password && !passwordValue) {
+      nextErrors.password = "Password is required";
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return nextErrors;
+  };
+
+  const updateField = (field, value) => {
+    const nextTouched = { ...touched, [field]: true };
+    setTouched(nextTouched);
+    if (field === "email") {
+      setEmail(value);
+      setErrors(computeErrors(value, password, nextTouched));
+    } else {
+      setPassword(value);
+      setErrors(computeErrors(email, value, nextTouched));
+    }
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormError("");
 
-    if (!validateForm()) return;
+    const nextTouched = { email: true, password: true };
+    const nextErrors = computeErrors(email, password, nextTouched);
+    setTouched(nextTouched);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
 
     setIsSubmitting(true);
 
@@ -119,9 +138,14 @@ const Login = () => {
                   type="email"
                   name="email"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => updateField("email", event.target.value)}
                   placeholder="you@example.com"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                  aria-invalid={Boolean(errors.email)}
+                  className={`w-full rounded-lg border bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:ring-2 ${
+                    errors.email
+                      ? "border-red-400 focus:border-red-500 focus:ring-red-100"
+                      : "border-slate-300 focus:border-teal-500 focus:ring-teal-100"
+                  }`}
                 />
                 {errors.email && (
                   <p className="mt-1 text-sm text-red-500">{errors.email}</p>
@@ -142,9 +166,14 @@ const Login = () => {
                   type="password"
                   name="password"
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  onChange={(event) => updateField("password", event.target.value)}
                   placeholder="Enter your password"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                  aria-invalid={Boolean(errors.password)}
+                  className={`w-full rounded-lg border bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:ring-2 ${
+                    errors.password
+                      ? "border-red-400 focus:border-red-500 focus:ring-red-100"
+                      : "border-slate-300 focus:border-teal-500 focus:ring-teal-100"
+                  }`}
                 />
                 {errors.password && (
                   <p className="mt-1 text-sm text-red-500">{errors.password}</p>

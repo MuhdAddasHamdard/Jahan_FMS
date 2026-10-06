@@ -6,6 +6,7 @@ import {
   getJson,
   uniqueEmail,
   between,
+  cleanupTestUsers,
 } from "./helpers.js";
 import prisma from "../src/prisma";
 
@@ -16,6 +17,8 @@ let adminToken;
 let memberToken;
 let teacherId;
 let teacherToken;
+let baseline;
+let seedReceiptNumber;
 
 before(async () => {
   ({ server, baseUrl } = await startServer());
@@ -35,6 +38,11 @@ before(async () => {
     password: "password123",
   });
   adminToken = adminLogin.data.token;
+
+  baseline = await getJson(baseUrl, "/dashboard/summary", adminToken);
+  if (baseline.status !== 200) {
+    throw new Error(`baseline dashboard failed: ${JSON.stringify(baseline)}`);
+  }
 
   const member = await postJson(baseUrl, "/users", {
     name: "Dash Member",
@@ -117,12 +125,14 @@ before(async () => {
   if (payment.status !== 201) {
     throw new Error(`seed payment failed: ${JSON.stringify(payment)}`);
   }
+  seedReceiptNumber = payment.data.receipt.number;
 });
 
 after(async () => {
   await prisma.user.deleteMany({
     where: { id: { in: [adminId, teacherId] } },
   });
+  await cleanupTestUsers();
   await new Promise((resolve) => server.close(resolve));
 });
 
@@ -130,16 +140,20 @@ test("GET /dashboard/summary reports auto-computed fee finances scoped to the us
   const { status, data } = await getJson(baseUrl, "/dashboard/summary", adminToken);
 
   assert.equal(status, 200);
-  assert.equal(data.monthlyFeeCollected, 800);
-  assert.equal(data.monthlyRefunds, 0);
-  assert.equal(data.monthlySalaries, 0);
-  assert.equal(data.monthlyExpenses, 0);
-  assert.equal(data.monthlyNet, 800);
-  assert.equal(data.studentCount, 1);
-  assert.equal(data.classCount, 1);
-  assert.equal(data.feeTypeCount, 1);
-  assert.equal(data.recentReceipts.length, 1);
-  assert.ok(data.recentReceipts[0].student);
+  assert.equal(data.monthlyFeeCollected, baseline.data.monthlyFeeCollected + 800);
+  assert.equal(data.monthlyRefunds, baseline.data.monthlyRefunds);
+  assert.equal(data.monthlySalaries, baseline.data.monthlySalaries);
+  assert.equal(data.monthlyExpenses, baseline.data.monthlyExpenses);
+  assert.equal(data.monthlyNet, baseline.data.monthlyNet + 800);
+  assert.equal(data.studentCount, baseline.data.studentCount + 2);
+  assert.equal(data.classCount, baseline.data.classCount + 2);
+  assert.equal(data.feeTypeCount, baseline.data.feeTypeCount + 1);
+  assert.ok(data.recentReceipts.length >= 1);
+  assert.ok(
+    data.recentReceipts.some(
+      (receipt) => receipt.number === seedReceiptNumber && receipt.student,
+    ),
+  );
   assert.match(data.recentReceipts[0].number, /^RC-\d+$/);
   assert.equal(data.totalUsers, undefined);
 });
@@ -203,11 +217,9 @@ test("GET /students/:id omits fee and refund money data for teachers", async () 
     teacherToken,
   );
   const adminStudent = await getJson(baseUrl, "/students", adminToken);
-  const asAdmin = await getJson(
-    baseUrl,
-    `/students/${adminStudent.data[0].id}`,
-    adminToken,
-  );
+  const target = adminStudent.data.find((record) => record.name === "Dash Student");
+  assert.ok(target, "expected the seeded Dash Student to be visible to the admin");
+  const asAdmin = await getJson(baseUrl, `/students/${target.id}`, adminToken);
 
   assert.equal(asTeacher.status, 200);
   assert.equal(asTeacher.data.name, "Teacher Student");
