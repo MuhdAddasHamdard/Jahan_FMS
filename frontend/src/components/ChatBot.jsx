@@ -51,10 +51,21 @@ const ChatBot = () => {
 
     try {
       const payload = nextMessages
-        .filter((message) => message !== GREETING)
+        .filter(
+          (message) =>
+            message !== GREETING &&
+            (message.role === "user" || message.role === "assistant"),
+        )
         .map((message) => ({ role: message.role, content: message.content }));
       const data = await api.post("/chat", { messages: payload });
-      setMessages((current) => [...current, { role: "assistant", content: data.reply }]);
+      setMessages((current) => [
+        ...current,
+        ...(data.actions ?? []).map((action) => ({
+          role: "action",
+          content: action.summary,
+        })),
+        { role: "assistant", content: data.reply },
+      ]);
     } catch (err) {
       setError(err?.message || "The assistant could not respond. Please try again.");
     } finally {
@@ -116,22 +127,38 @@ const ChatBot = () => {
             ref={listRef}
             className="flex-1 space-y-3 overflow-y-auto px-4 py-4"
           >
-            {messages.map((message, index) => (
-              <div
-                key={`${message.role}-${index}`}
-                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                    message.role === "user"
-                      ? "rounded-br-sm bg-teal-600 text-white"
-                      : "rounded-bl-sm bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100"
-                  }`}
-                >
-                  {message.content}
+            {messages.map((message, index) =>
+              message.role === "action" ? (
+                <div key={`${message.role}-${index}`} className="flex justify-center">
+                  <span className="flex items-center gap-1.5 rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-[11px] font-medium text-teal-700 dark:border-teal-800 dark:bg-teal-900/40 dark:text-teal-300">
+                    <svg
+                      className="h-3.5 w-3.5"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    {message.content}
+                  </span>
                 </div>
-              </div>
-            ))}
+              ) : (
+                <div
+                  key={`${message.role}-${index}`}
+                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                      message.role === "user"
+                        ? "rounded-br-sm bg-teal-600 text-white"
+                        : "rounded-bl-sm bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100"
+                    }`}
+                  >
+                    {message.content}
+                  </div>
+                </div>
+              ),
+            )}
 
             {history.length === 0 && (
               <div className="flex flex-wrap gap-2 pt-1">

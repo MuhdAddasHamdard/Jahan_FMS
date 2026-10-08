@@ -37,7 +37,7 @@ export const postChat = async (req, res) => {
     }
 
     const result = await askAssistant({
-      role: req.user?.role,
+      user: req.user,
       messages: req.body.messages,
     });
 
@@ -46,7 +46,7 @@ export const postChat = async (req, res) => {
       return res.status(mapped.status).json({ message: mapped.message });
     }
 
-    res.status(200).json(result);
+    res.status(200).json({ reply: result.reply, actions: result.actions });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Something went wrong on the server" });
