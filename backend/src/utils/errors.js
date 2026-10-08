@@ -62,6 +62,26 @@ export const businessErrorToResponse = (error) => {
       status: 400,
       message: "Cannot delete: this staff already has salary payments",
     },
+    CHAT_INVALID_MESSAGE: {
+      status: 400,
+      message: "Type a message before sending it to the assistant",
+    },
+    CHAT_MESSAGE_TOO_LONG: {
+      status: 400,
+      message: "That message is too long. Please keep it under 2000 characters",
+    },
+    CHAT_NOT_CONFIGURED: {
+      status: 503,
+      message: "The assistant is not available right now. Please try again later",
+    },
+    CHAT_RATE_LIMITED: {
+      status: 429,
+      message: "The assistant is busy right now. Please try again in a moment",
+    },
+    CHAT_FAILED: {
+      status: 502,
+      message: "The assistant could not respond. Please try again",
+    },
   };
 
   return map[error] ?? { status: 400, message: "Invalid request" };

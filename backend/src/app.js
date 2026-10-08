@@ -9,6 +9,7 @@ import refundRouter from "./routes/refund.router";
 import staffRouter, { salaryRouter } from "./routes/staff.router";
 import expenseRouter from "./routes/expense.router";
 import settingsRouter from "./routes/settings.router";
+import chatRouter from "./routes/chat.router";
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use("/staff", staffRouter);
 app.use("/salary-payments", salaryRouter);
 app.use("/expenses", expenseRouter);
 app.use("/settings", settingsRouter);
+app.use("/chat", chatRouter);
 
 app.get("/", (req, res) => {
   res.send("Institute Management System API");

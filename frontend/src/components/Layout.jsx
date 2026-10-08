@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/auth-context";
 import { useTheme } from "../theme/theme-context";
+import ChatBot from "./ChatBot";
 
 const ICON_PROPS = {
   className: "h-5 w-5",
@@ -429,6 +430,8 @@ const Layout = () => {
           <Outlet />
         </main>
       </div>
+
+      <ChatBot />
     </div>
   );
 };
