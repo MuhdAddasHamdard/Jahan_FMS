@@ -17,6 +17,7 @@ let adminToken;
 let adminId;
 let financeToken;
 let financeId;
+let teacherId;
 
 const post = (path, body, token = adminToken) => postJson(baseUrl, path, body, token);
 const get = (path, token = adminToken) => getJson(baseUrl, path, token);
@@ -74,6 +75,17 @@ before(async () => {
     password: "password123",
   });
   financeToken = financeLogin.data.token;
+
+  const teacher = await postJson(baseUrl, "/users", {
+    name: "Edit Teacher",
+    email: uniqueEmail("edit-teacher"),
+    password: "password123",
+  });
+  await prisma.user.update({
+    where: { id: teacher.data.id },
+    data: { role: "TEACHER" },
+  });
+  teacherId = teacher.data.id;
 });
 
 after(async () => {
@@ -163,7 +175,7 @@ test("PATCH /fees/plans/:id rejects unknown fields", async () => {
   assert.equal(status, 400);
 });
 
-test("PATCH /fees/receipts/:id updates notes but not amounts", async () => {
+test("PATCH /fees/receipts/:id updates notes and amount within the installment", async () => {
   const feeType = await post("/fees/types", { name: "Receipt Note Fee", amount: 2000 });
   const student = await post("/students", {
     admissionNo: `ADM-${between(1000, 9999)}`,
@@ -191,8 +203,15 @@ test("PATCH /fees/receipts/:id updates notes but not amounts", async () => {
   assert.equal(status, 200);
   assert.equal(data.notes, "Paid by cheque 4471");
 
-  const rejected = await patch(`/fees/receipts/${receipt.id}`, { amount: 1 });
+  const adjusted = await patch(`/fees/receipts/${receipt.id}`, { amount: 1500 });
+  assert.equal(adjusted.status, 200);
+  assert.equal(adjusted.data.amount, 1500);
+
+  const rejected = await patch(`/fees/receipts/${receipt.id}`, { amount: 5000 });
   assert.equal(rejected.status, 400);
+
+  const empty = await patch(`/fees/receipts/${receipt.id}`, {});
+  assert.equal(empty.status, 400);
 });
 
 test("PATCH /refunds/:id updates amount and reason within paid limits", async () => {
@@ -306,7 +325,7 @@ test("PATCH /users/:id rejects protected fields and non-admins", async () => {
 });
 
 test("PATCH /classes/:id/schedules/:scheduleId and materials/:materialId update in place", async () => {
-  const classRecord = await post("/classes", { name: "Editable Class" });
+  const classRecord = await post("/classes", { name: "Editable Class", teacherId });
   assert.equal(classRecord.status, 201);
 
   const schedule = await post(`/classes/${classRecord.data.id}/schedules`, {
@@ -356,8 +375,8 @@ test("PATCH /classes/:id/schedules/:scheduleId and materials/:materialId update 
 });
 
 test("PATCH /students/:id can move and clear a class", async () => {
-  const firstClass = await post("/classes", { name: "Class One" });
-  const secondClass = await post("/classes", { name: "Class Two" });
+  const firstClass = await post("/classes", { name: "Class One", teacherId });
+  const secondClass = await post("/classes", { name: "Class Two", teacherId });
   const student = await post("/students", {
     admissionNo: `ADM-${between(1000, 9999)}`,
     name: "Class Move Student",

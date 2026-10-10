@@ -40,7 +40,7 @@ export const getClass = async (req, res) => {
 
 export const createClassController = async (req, res) => {
   try {
-    const classRecord = await createClass(req.user.id, req.body);
+    const classRecord = await createClass(req.user.id, req.user.role, req.body);
     if (classRecord?.error) {
       const mapped = businessErrorToResponse(classRecord.error);
       return res.status(mapped.status).json({ message: mapped.message });

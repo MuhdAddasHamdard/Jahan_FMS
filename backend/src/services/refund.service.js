@@ -41,7 +41,6 @@ export const createRefund = async (userId, { studentId, amount, reason, refunded
 
     const paidRows = await tx.feeInstallment.aggregate({
       where: {
-        userId,
         studentFee: { studentId: student.id },
       },
       _sum: { paidAmount: true },

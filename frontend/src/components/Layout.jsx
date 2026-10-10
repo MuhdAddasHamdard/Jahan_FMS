@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/auth-context";
 import { useTheme } from "../theme/theme-context";
@@ -198,20 +198,24 @@ const ThemeToggle = ({ className }) => {
   );
 };
 
-const layoutLinkClass = ({ isActive }) =>
-  `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+const layoutLinkClass = (collapsed) => ({ isActive }) =>
+  `flex items-center rounded-lg py-2.5 text-sm font-medium transition ${
+    collapsed ? "justify-center px-2" : "gap-3 px-3"
+  } ${
     isActive
       ? "bg-teal-600 text-white"
       : "text-slate-400 hover:bg-slate-800 hover:text-white"
   }`;
 
-const NavList = ({ items, onNavigate }) => (
-  <div className="space-y-6 px-3 py-4">
+const NavList = ({ items, onNavigate, collapsed = false }) => (
+  <div className={collapsed ? "space-y-4 px-2 py-4" : "space-y-6 px-3 py-4"}>
     {items.map((section) => (
       <div key={section.title}>
-        <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-          {section.title}
-        </p>
+        {!collapsed && (
+          <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+            {section.title}
+          </p>
+        )}
         <nav className="flex flex-col gap-1">
           {section.items.map((item) => (
             <NavLink
@@ -219,10 +223,11 @@ const NavList = ({ items, onNavigate }) => (
               to={item.to}
               end={item.to === "/"}
               onClick={onNavigate}
-              className={layoutLinkClass}
+              title={collapsed ? item.label : undefined}
+              className={layoutLinkClass(collapsed)}
             >
               {item.icon}
-              {item.label}
+              {!collapsed && item.label}
             </NavLink>
           ))}
         </nav>
@@ -231,50 +236,20 @@ const NavList = ({ items, onNavigate }) => (
   </div>
 );
 
-const SidebarFooter = ({ user, onNavigate }) => {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
-
-  return (
-    <div className="border-t border-slate-800 p-4">
-      <div className="flex items-center gap-3">
-        <Avatar user={user} className="h-9 w-9" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-white">{user?.name}</p>
-          <p className="truncate text-xs text-slate-500">{user?.email}</p>
-        </div>
-      </div>
-      <div className="mt-3 flex gap-2">
-        <NavLink
-          to="/settings"
-          onClick={onNavigate}
-          className="flex flex-1 items-center justify-center rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-teal-500 hover:text-teal-400"
-        >
-          Settings
-        </NavLink>
-        <button
-          onClick={handleLogout}
-          className="flex-1 rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-red-500 hover:text-red-400"
-        >
-          Sign out
-        </button>
-      </div>
-    </div>
-  );
-};
-
 const Layout = () => {
   const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(
+    () => localStorage.getItem("fms-sidebar-collapsed") === "1",
+  );
   const { logout } = useAuth();
   const navigate = useNavigate();
   const role = user?.role;
+
+  useEffect(() => {
+    localStorage.setItem("fms-sidebar-collapsed", collapsed ? "1" : "0");
+  }, [collapsed]);
 
   const handleLogout = () => {
     setMenuOpen(false);
@@ -298,26 +273,61 @@ const Layout = () => {
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col bg-slate-950 lg:flex">
-        <div className="flex h-16 items-center gap-2 border-b border-slate-800 px-6">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-600 text-sm font-bold text-white">
-            J
-          </span>
-          <div>
-            <h1 className="text-sm font-bold tracking-tight text-white">JAHAN FMS</h1>
-            <p className="text-[10px] uppercase tracking-widest text-slate-500">
-              Institute Management
-            </p>
+      <aside
+        className={`fixed inset-y-0 left-0 z-20 hidden flex-col bg-slate-950 transition-all duration-200 lg:flex ${
+          collapsed ? "w-20" : "w-64"
+        }`}
+      >
+        <div
+          className={`flex h-16 items-center border-b border-slate-800 ${
+            collapsed ? "justify-center px-2" : "justify-between px-6"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-600 text-sm font-bold text-white">
+              J
+            </span>
+            {!collapsed && (
+              <div>
+                <h1 className="text-sm font-bold tracking-tight text-white">JAHAN FMS</h1>
+                <p className="text-[10px] uppercase tracking-widest text-slate-500">
+                  Institute Management
+                </p>
+              </div>
+            )}
           </div>
+          {!collapsed && (
+            <button
+              onClick={() => setCollapsed(true)}
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
+              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+              </svg>
+            </button>
+          )}
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <NavList items={visibleSections} />
+        {collapsed && (
+          <button
+            onClick={() => setCollapsed(false)}
+            aria-label="Expand sidebar"
+            title="Expand sidebar"
+            className="mx-auto mt-3 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z" />
+            </svg>
+          </button>
+        )}
+        <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
+          <NavList items={visibleSections} collapsed={collapsed} />
         </div>
-        <SidebarFooter user={user} />
       </aside>
 
       {/* Main column */}
-      <div className="lg:pl-64">
+      <div className={collapsed ? "lg:pl-20" : "lg:pl-64"}>
         {/* Top bar */}
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900 lg:px-8">
           <div className="flex items-center gap-2 lg:hidden">
@@ -417,10 +427,9 @@ const Layout = () => {
                 </span>
                 <h1 className="text-sm font-bold text-white">JAHAN FMS</h1>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
                 <NavList items={visibleSections} onNavigate={closeAll} />
               </div>
-              <SidebarFooter user={user} onNavigate={closeAll} />
             </aside>
           </div>
         )}

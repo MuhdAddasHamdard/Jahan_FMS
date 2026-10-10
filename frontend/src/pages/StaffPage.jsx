@@ -92,7 +92,11 @@ const StaffFields = ({ value, onChange, idPrefix, lockStaffNo = false }) => (
       />
     </FormField>
 
-    <FormField label="Email" htmlFor={`${idPrefix}-email`} hint="Optional">
+    <FormField
+      label="Email"
+      htmlFor={`${idPrefix}-email`}
+      hint="Optional · a TEACHER with an email gets a login for class assignment"
+    >
       <input
         id={`${idPrefix}-email`}
         type="email"

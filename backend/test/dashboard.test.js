@@ -17,6 +17,7 @@ let adminToken;
 let memberToken;
 let teacherId;
 let teacherToken;
+let officeTeacherId;
 let baseline;
 let seedReceiptNumber;
 
@@ -94,7 +95,23 @@ before(async () => {
     teacherToken,
   );
 
-  const cls = await postJson(baseUrl, "/classes", { name: "Dash Grade" }, adminToken);
+  const officeTeacher = await postJson(baseUrl, "/users", {
+    name: "Dash Office Teacher",
+    email: uniqueEmail("dash-office-teacher"),
+    password: "password123",
+  });
+  officeTeacherId = officeTeacher.data.id;
+  await prisma.user.update({
+    where: { id: officeTeacherId },
+    data: { role: "TEACHER" },
+  });
+
+  const cls = await postJson(
+    baseUrl,
+    "/classes",
+    { name: "Dash Grade", teacherId: officeTeacherId },
+    adminToken,
+  );
   const student = await postJson(
     baseUrl,
     "/students",

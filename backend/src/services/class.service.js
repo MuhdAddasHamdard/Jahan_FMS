@@ -96,11 +96,19 @@ const resolveTeacherId = async (teacherId) => {
   return teacher ? teacher.id : undefined;
 };
 
-export const createClass = async (userId, classData) => {
-  const teacherId = await resolveTeacherId(classData.teacherId);
+export const createClass = async (userId, role, classData) => {
+  let teacherId = await resolveTeacherId(classData.teacherId);
 
   if (teacherId === undefined) {
     return { error: "TEACHER_NOT_FOUND" };
+  }
+
+  if (!teacherId && role === ROLES.TEACHER) {
+    teacherId = userId;
+  }
+
+  if (!teacherId) {
+    return { error: "CLASS_TEACHER_REQUIRED" };
   }
 
   const classRecord = await prisma.class.create({

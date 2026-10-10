@@ -11,6 +11,7 @@ import {
   deleteFeePlan,
   collectFeePayment,
   getReceipts,
+  getStudentInstallments,
   updateReceipt,
 } from "../services/fee.service";
 import { businessErrorToResponse } from "../utils/errors";
@@ -180,7 +181,21 @@ export const updateReceiptController = async (req, res) => {
     if (!receipt) {
       return res.status(404).json({ message: "Receipt not found" });
     }
+    if (receipt.error) {
+      const mapped = businessErrorToResponse(receipt.error);
+      return res.status(mapped.status).json({ message: mapped.message });
+    }
     res.status(200).json(receipt);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Something went wrong on the server" });
+  }
+};
+
+export const getStudentInstallmentsController = async (req, res) => {
+  try {
+    const plans = await getStudentInstallments(req.user.id, req.params.studentId);
+    res.status(200).json(plans);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Something went wrong on the server" });

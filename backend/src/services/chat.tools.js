@@ -1,7 +1,12 @@
 ﻿import { ROLES } from "../constants/roles";
 import { businessErrorToResponse } from "../utils/errors";
 import { getAllStudents } from "./student.service";
-import { getAllClasses, createClassSchedule, createCourseMaterial } from "./class.service";
+import {
+  getAllClasses,
+  createClass,
+  createClassSchedule,
+  createCourseMaterial,
+} from "./class.service";
 import {
   getAllFeeTypes,
   getAllFeePlans,
@@ -12,6 +17,8 @@ import {
 } from "./fee.service";
 import { createExpense } from "./expense.service";
 import { createRefund } from "./refund.service";
+import { getTeachers, createUserService } from "./user.service";
+import { createStaff } from "./staff.service";
 
 const OFFICE = [ROLES.ADMIN, ROLES.FINANCE];
 const CLASS_ROLES = [ROLES.ADMIN, ROLES.FINANCE, ROLES.TEACHER];
@@ -187,6 +194,140 @@ const TOOLS = {
           dues,
         },
       };
+    },
+  },
+
+  create_class: {
+    roles: CLASS_ROLES,
+    isAction: true,
+    definition: def(
+      "create_class",
+      "Create a class. A class must have a teacher: admin and finance must pass a teacherId from list_teachers, while a teacher is assigned to their own new class automatically.",
+      {
+        name: { type: "string", description: "Class name, for example Grade 7" },
+        section: { type: "string", description: "Optional section, for example A" },
+        teacherId: {
+          type: "number",
+          description: "Teacher id from list_teachers (required for admin and finance)",
+        },
+      },
+      ["name"],
+    ),
+    execute: async ({ user, args }) => {
+      const result = await createClass(user.id, user.role, {
+        name: String(args.name ?? "").trim(),
+        section: args.section,
+        teacherId: args.teacherId,
+      });
+      if (result?.error) return { error: result.error };
+      return {
+        summary: `Class "${result.name}"${
+          result.section ? ` (Section ${result.section})` : ""
+        } created`,
+        payload: result,
+      };
+    },
+  },
+
+  list_teachers: {
+    roles: CLASS_ROLES,
+    definition: def(
+      "list_teachers",
+      "List teacher accounts with their ids. Call this before assigning a teacher to a class.",
+      {},
+    ),
+    execute: async () => {
+      const teachers = await getTeachers();
+      return {
+        payload: {
+          teachers: teachers.slice(0, 30).map((teacher) => ({
+            id: teacher.id,
+            name: teacher.name,
+            email: teacher.email,
+          })),
+        },
+      };
+    },
+  },
+
+  create_teacher: {
+    roles: OFFICE,
+    isAction: true,
+    definition: def(
+      "create_teacher",
+      "Create a teacher login account. Once created the teacher can be assigned to classes.",
+      {
+        name: { type: "string" },
+        email: { type: "string", description: "Sign-in email, must be unique" },
+        password: { type: "string", description: "At least 8 characters" },
+      },
+      ["name", "email", "password"],
+    ),
+    execute: async ({ args }) => {
+      const password = String(args.password ?? "");
+      if (password.length < 8) {
+        return { error: "USER_PASSWORD_TOO_SHORT" };
+      }
+
+      try {
+        const teacher = await createUserService({
+          name: String(args.name ?? "").trim(),
+          email: String(args.email ?? "").trim(),
+          password,
+          role: ROLES.TEACHER,
+        });
+        return {
+          summary: `Teacher account created for ${teacher.name} (${teacher.email})`,
+          payload: teacher,
+        };
+      } catch (error) {
+        if (error?.code === "P2002") {
+          return { error: "USER_EMAIL_EXISTS" };
+        }
+        throw error;
+      }
+    },
+  },
+
+  create_staff: {
+    roles: OFFICE,
+    isAction: true,
+    definition: def(
+      "create_staff",
+      "Add a staff member for payroll. A TEACHER with an email also gets a login account that can be assigned to classes.",
+      {
+        staffNo: { type: "string", description: "Unique staff number" },
+        name: { type: "string" },
+        designation: { type: "string", description: "TEACHER, ADMIN or SUPPORT" },
+        email: {
+          type: "string",
+          description: "Optional, but needed to create a teacher login",
+        },
+        phone: { type: "string" },
+        salary: { type: "number" },
+      },
+      ["staffNo", "name"],
+    ),
+    execute: async ({ user, args }) => {
+      try {
+        const staff = await createStaff(user.id, {
+          staffNo: String(args.staffNo).trim(),
+          name: String(args.name).trim(),
+          designation: args.designation,
+          email: args.email,
+          phone: args.phone,
+          salary: args.salary,
+        });
+        return {
+          summary: `Staff "${staff.name}" added (${staff.designation})`,
+          payload: staff,
+        };
+      } catch (error) {
+        if (error?.code === "P2002") {
+          return { error: "STAFF_NO_EXISTS" };
+        }
+        throw error;
+      }
     },
   },
 

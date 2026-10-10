@@ -22,7 +22,15 @@ const DAY_NAMES = [
 
 const emptyClass = { name: "", section: "", teacherId: "" };
 
-const ClassFields = ({ value, onChange, teachers, showTeacher, idPrefix, lockName = false }) => (
+const ClassFields = ({
+  value,
+  onChange,
+  teachers,
+  showTeacher,
+  teacherRequired = false,
+  idPrefix,
+  lockName = false,
+}) => (
   <div className="grid gap-3 sm:grid-cols-3">
     <FormField label="Class name" htmlFor={`${idPrefix}-name`} hint="e.g. Grade 5">
       <input
@@ -51,7 +59,7 @@ const ClassFields = ({ value, onChange, teachers, showTeacher, idPrefix, lockNam
       <FormField
         label="Assigned teacher"
         htmlFor={`${idPrefix}-teacher`}
-        hint="Who teaches this class"
+        hint={teacherRequired ? "Required — choose who teaches this class" : "Who teaches this class"}
       >
         <select
           id={`${idPrefix}-teacher`}
@@ -59,7 +67,9 @@ const ClassFields = ({ value, onChange, teachers, showTeacher, idPrefix, lockNam
           onChange={(event) => onChange({ ...value, teacherId: event.target.value })}
           className={inputClass}
         >
-          <option value="">No assigned teacher</option>
+          <option value="">
+            {teacherRequired ? "Select a teacher" : "No assigned teacher"}
+          </option>
           {teachers.map((teacher) => (
             <option key={teacher.id} value={teacher.id}>
               {teacher.name} ({teacher.email})
@@ -507,6 +517,11 @@ const ClassesPage = () => {
       return;
     }
 
+    if (canAssignTeacher && !draft.teacherId) {
+      setError("Choose a teacher for the class");
+      return;
+    }
+
     setSubmitting(true);
     setError("");
     try {
@@ -734,17 +749,26 @@ const ClassesPage = () => {
         className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
       >
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Add a new class</h2>
+        {canAssignTeacher && teachers.length === 0 && (
+          <div className="mb-3">
+            <Alert
+              type="info"
+              message="No teachers available yet. Add a teacher under Staff & Salaries or User management, then create the class."
+            />
+          </div>
+        )}
         <ClassFields
           value={draft}
           onChange={setDraft}
           teachers={teachers}
           showTeacher={canAssignTeacher}
+          teacherRequired={canAssignTeacher}
           idPrefix="class-create"
         />
         <button
           type="submit"
-          disabled={submitting}
-          className="mt-4 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+          disabled={submitting || (canAssignTeacher && !draft.teacherId)}
+          className="mt-4 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? "Saving..." : "Add class"}
         </button>

@@ -189,7 +189,23 @@ test("DELETE /users/:id cascades to institute data", async () => {
   });
   const targetToken = targetLogin.data.token;
 
-  const cls = await postJson(baseUrl, "/classes", { name: "Cascade Class" }, targetToken);
+  const teacher = await postJson(baseUrl, "/users", {
+    name: "Cascade Teacher",
+    email: uniqueEmail("cascade-teacher"),
+    password: "password123",
+  });
+  await prisma.user.update({
+    where: { id: teacher.data.id },
+    data: { role: "TEACHER" },
+  });
+
+  const cls = await postJson(
+    baseUrl,
+    "/classes",
+    { name: "Cascade Class", teacherId: teacher.data.id },
+    targetToken,
+  );
+  assert.equal(cls.status, 201);
   const student = await postJson(
     baseUrl,
     "/students",

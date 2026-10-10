@@ -30,6 +30,10 @@ const TOOL_GUIDANCE = {
   create_fee_type: "create a fee type",
   create_expense: "record an institute expense",
   create_refund: "refund part of what a student paid",
+  create_class: "create a class (admin and finance must assign a teacher; a teacher is assigned to their own new class)",
+  list_teachers: "list teacher accounts and their ids",
+  create_teacher: "create a teacher login account",
+  create_staff: "add a staff member for payroll",
   create_class_schedule: "add a weekly class schedule slot",
   add_course_material: "attach course material to a class",
 };

@@ -1,5 +1,44 @@
+import bcrypt from "bcrypt";
+import { randomBytes } from "node:crypto";
 import prisma from "../prisma";
 import { toNumber } from "../utils/money";
+import { ROLES } from "../constants/roles";
+
+// A staff member with the TEACHER designation should be pickable as a class
+// teacher, which requires a matching login account. Create one when an email is
+// given. The admin sets the password later from User management.
+const ensureTeacherAccount = async ({ name, designation, email }) => {
+  if (designation !== "TEACHER") {
+    return null;
+  }
+
+  const normalizedEmail = email ? String(email).trim() : "";
+  if (!normalizedEmail) {
+    return null;
+  }
+
+  const existing = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    select: { id: true },
+  });
+
+  if (existing) {
+    return existing.id;
+  }
+
+  const password = await bcrypt.hash(randomBytes(24).toString("hex"), 10);
+  const user = await prisma.user.create({
+    data: {
+      name,
+      email: normalizedEmail,
+      role: ROLES.TEACHER,
+      password,
+    },
+    select: { id: true },
+  });
+
+  return user.id;
+};
 
 const formatStaff = (staff) => ({
   id: staff.id,
@@ -43,6 +82,12 @@ export const createStaff = async (userId, staffData) => {
     },
   });
 
+  try {
+    await ensureTeacherAccount(staff);
+  } catch (error) {
+    console.error("Could not create a login for this teacher:", error);
+  }
+
   return formatStaff(staff);
 };
 
@@ -67,6 +112,12 @@ export const updateStaff = async (userId, id, staffData) => {
       salary: staffData.salary !== undefined ? Number(staffData.salary) : undefined,
     },
   });
+
+  try {
+    await ensureTeacherAccount(staff);
+  } catch (error) {
+    console.error("Could not create a login for this teacher:", error);
+  }
 
   return formatStaff(staff);
 };

@@ -242,7 +242,6 @@ export const deleteStudent = async (userId, role, id) => {
 export const getTotalPaidForStudent = async (userId, studentId) => {
   const installments = await prisma.feeInstallment.findMany({
     where: {
-      userId,
       studentFee: { studentId: Number(studentId) },
       status: { not: "PENDING" },
     },

@@ -31,6 +31,14 @@ const UsersPage = () => {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState({ name: "", email: "", password: "" });
+  const [creating, setCreating] = useState(false);
+  const [createValue, setCreateValue] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "TEACHER",
+  });
+  const [createBusy, setCreateBusy] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
 
@@ -132,6 +140,48 @@ const UsersPage = () => {
     }
   };
 
+  const createPasswordError = createValue.password
+    ? passwordLengthError(createValue.password)
+    : "";
+
+  const openCreate = () => {
+    setCreateValue({ name: "", email: "", password: "", role: "TEACHER" });
+    setCreating(true);
+  };
+
+  const handleCreate = async (event) => {
+    event.preventDefault();
+    if (!createValue.name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+    if (!createValue.email.trim()) {
+      toast.error("Email is required");
+      return;
+    }
+    if (!createValue.password || createValue.password.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+
+    setCreateBusy(true);
+    try {
+      await api.post("/users/manage", {
+        name: createValue.name.trim(),
+        email: createValue.email.trim(),
+        password: createValue.password,
+        role: createValue.role,
+      });
+      toast.success("User created");
+      setCreating(false);
+      await refresh();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setCreateBusy(false);
+    }
+  };
+
   const handleDelete = async () => {
     setDeleteBusy(true);
     try {
@@ -155,6 +205,15 @@ const UsersPage = () => {
       />
 
       {error && <div className="mb-4"><Alert type="error" message={error} /></div>}
+
+      <div className="mb-4 flex justify-end">
+        <button
+          onClick={openCreate}
+          className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-700"
+        >
+          Add user
+        </button>
+      </div>
 
       {loading ? (
         <div className="flex h-48 items-center justify-center"><Spinner /></div>
@@ -305,6 +364,93 @@ const UsersPage = () => {
               className={passwordError ? errorInputClass : inputClass}
               aria-invalid={Boolean(passwordError)}
             />
+          </FormField>
+        </form>
+      </Modal>
+
+      <Modal
+        open={creating}
+        onClose={() => setCreating(false)}
+        title="Add user"
+        description="Create a login account. Teachers created here can be assigned to classes."
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setCreating(false)}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="user-create-form"
+              disabled={createBusy || Boolean(createPasswordError)}
+              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+            >
+              {createBusy ? "Creating..." : "Create user"}
+            </button>
+          </>
+        }
+      >
+        <form id="user-create-form" onSubmit={handleCreate} className="space-y-3">
+          <FormField label="Full name" htmlFor="user-create-name">
+            <input
+              id="user-create-name"
+              type="text"
+              value={createValue.name}
+              onChange={(event) =>
+                setCreateValue((current) => ({ ...current, name: event.target.value }))
+              }
+              placeholder="e.g. Said Ahmad"
+              className={inputClass}
+            />
+          </FormField>
+          <FormField label="Email address" htmlFor="user-create-email" hint="Used to sign in">
+            <input
+              id="user-create-email"
+              type="email"
+              value={createValue.email}
+              onChange={(event) =>
+                setCreateValue((current) => ({ ...current, email: event.target.value }))
+              }
+              placeholder="e.g. said@fms.com"
+              className={inputClass}
+            />
+          </FormField>
+          <FormField
+            label="Password"
+            htmlFor="user-create-password"
+            hint="At least 8 characters"
+            error={createPasswordError}
+          >
+            <input
+              id="user-create-password"
+              type="password"
+              value={createValue.password}
+              onChange={(event) =>
+                setCreateValue((current) => ({ ...current, password: event.target.value }))
+              }
+              placeholder="At least 8 characters"
+              className={createPasswordError ? errorInputClass : inputClass}
+              aria-invalid={Boolean(createPasswordError)}
+            />
+          </FormField>
+          <FormField label="Role" htmlFor="user-create-role">
+            <select
+              id="user-create-role"
+              value={createValue.role}
+              onChange={(event) =>
+                setCreateValue((current) => ({ ...current, role: event.target.value }))
+              }
+              className={inputClass}
+            >
+              {ROLES.map((role) => (
+                <option key={role} value={role}>
+                  {role}
+                </option>
+              ))}
+            </select>
           </FormField>
         </form>
       </Modal>

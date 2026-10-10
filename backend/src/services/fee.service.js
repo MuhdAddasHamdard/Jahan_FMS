@@ -421,55 +421,160 @@ export const collectFeePayment = async (
   });
 };
 
-export const updateReceipt = async (userId, id, { notes } = {}) => {
-  const existing = await prisma.receipt.findFirst({
-    where: { id: Number(id) },
-    select: { id: true },
+const installmentStatusFor = (amount, paidAmount) => {
+  if (paidAmount >= toNumber(amount) - 0.001) return "PAID";
+  if (paidAmount > 0) return "PARTIAL";
+  return "PENDING";
+};
+
+const receiptInclude = {
+  installments: {
+    include: {
+      studentFee: {
+        include: {
+          student: { select: { id: true, admissionNo: true, name: true } },
+          feeType: { select: { id: true, name: true } },
+        },
+      },
+    },
+  },
+};
+
+const formatReceipt = (receipt) => ({
+  id: receipt.id,
+  number: receipt.number,
+  amount: toNumber(receipt.amount),
+  paidAt: receipt.paidAt,
+  notes: receipt.notes,
+  installmentId: receipt.installments[0]?.id ?? null,
+  student: receipt.installments[0]?.studentFee.student ?? null,
+  feeType: receipt.installments[0]?.studentFee.feeType ?? null,
+});
+
+export const getStudentInstallments = async (userId, studentId) => {
+  const plans = await prisma.studentFee.findMany({
+    where: { studentId: Number(studentId) },
+    include: {
+      feeType: { select: { id: true, name: true } },
+      installments: { orderBy: { dueDate: "asc" } },
+    },
+    orderBy: { createdAt: "desc" },
   });
 
-  if (!existing) {
-    return null;
-  }
+  return plans.map((plan) => ({
+    planId: plan.id,
+    feeType: plan.feeType,
+    totalAmount: toNumber(plan.totalAmount),
+    installments: plan.installments.map((installment) => ({
+      id: installment.id,
+      amount: toNumber(installment.amount),
+      paidAmount: toNumber(installment.paidAmount),
+      remaining: toNumber(installment.amount) - toNumber(installment.paidAmount),
+      dueDate: installment.dueDate,
+      status: installment.status,
+    })),
+  }));
+};
 
-  const receipt = await prisma.receipt.update({
-    where: { id: Number(id) },
-    data: { notes: notes !== undefined ? notes || null : undefined },
+export const updateReceipt = async (
+  userId,
+  id,
+  { amount, paidAt, notes, installmentId } = {},
+) => {
+  return prisma.$transaction(async (tx) => {
+    const receipt = await tx.receipt.findFirst({
+      where: { id: Number(id) },
+      include: { installments: true },
+    });
+
+    if (!receipt) {
+      return null;
+    }
+
+    const current = receipt.installments[0] ?? null;
+    const nextAmount =
+      amount !== undefined ? Number(amount) : toNumber(receipt.amount);
+
+    if (!Number.isFinite(nextAmount) || nextAmount <= 0) {
+      return { error: "RECEIPT_INVALID_AMOUNT" };
+    }
+
+    let target = current;
+    if (installmentId !== undefined && Number(installmentId) !== current?.id) {
+      target = await tx.feeInstallment.findFirst({
+        where: { id: Number(installmentId) },
+      });
+      if (!target) {
+        return { error: "INSTALLMENT_NOT_FOUND" };
+      }
+    }
+
+    if (!target) {
+      return { error: "RECEIPT_NOT_LINKED" };
+    }
+
+    const sameTarget = Boolean(current) && current.id === target.id;
+    const alreadyCounted = sameTarget ? toNumber(receipt.amount) : 0;
+    const capacity =
+      toNumber(target.amount) - toNumber(target.paidAmount) + alreadyCounted;
+
+    if (nextAmount > capacity + 0.001) {
+      return { error: "AMOUNT_EXCEEDS_REMAINING" };
+    }
+
+    const paidOn = paidAt ? new Date(paidAt) : receipt.paidAt;
+
+    if (current && !sameTarget) {
+      const oldPaid = Math.max(
+        0,
+        toNumber(current.paidAmount) - toNumber(receipt.amount),
+      );
+      await tx.feeInstallment.update({
+        where: { id: current.id },
+        data: {
+          paidAmount: oldPaid,
+          status: installmentStatusFor(current.amount, oldPaid),
+          paidAt: oldPaid > 0 ? current.paidAt : null,
+          receiptId: null,
+        },
+      });
+    }
+
+    const targetPaid =
+      (sameTarget
+        ? toNumber(target.paidAmount) - toNumber(receipt.amount)
+        : toNumber(target.paidAmount)) + nextAmount;
+
+    await tx.feeInstallment.update({
+      where: { id: target.id },
+      data: {
+        paidAmount: targetPaid,
+        status: installmentStatusFor(target.amount, targetPaid),
+        paidAt: targetPaid > 0 ? paidOn : null,
+        receiptId: receipt.id,
+      },
+    });
+
+    const updated = await tx.receipt.update({
+      where: { id: receipt.id },
+      data: {
+        amount: nextAmount,
+        paidAt: paidOn,
+        notes: notes !== undefined ? notes || null : undefined,
+      },
+      include: receiptInclude,
+    });
+
+    return formatReceipt(updated);
   });
-
-  return {
-    id: receipt.id,
-    number: receipt.number,
-    amount: toNumber(receipt.amount),
-    paidAt: receipt.paidAt,
-    notes: receipt.notes,
-  };
 };
 
 export const getReceipts = async (userId) => {
   const receipts = await prisma.receipt.findMany({
     where: {},
-    include: {
-      installments: {
-        include: {
-          studentFee: {
-            include: {
-              student: { select: { id: true, admissionNo: true, name: true } },
-              feeType: { select: { id: true, name: true } },
-            },
-          },
-        },
-      },
-    },
+    include: receiptInclude,
     orderBy: { paidAt: "desc" },
   });
 
-  return receipts.map((receipt) => ({
-    id: receipt.id,
-    number: receipt.number,
-    amount: toNumber(receipt.amount),
-    paidAt: receipt.paidAt,
-    notes: receipt.notes,
-    student: receipt.installments[0]?.studentFee.student ?? null,
-    feeType: receipt.installments[0]?.studentFee.feeType ?? null,
-  }));
+  return receipts.map(formatReceipt);
 };

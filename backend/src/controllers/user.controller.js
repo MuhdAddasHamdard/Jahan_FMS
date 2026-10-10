@@ -12,6 +12,7 @@ import {
 } from "../services/user.service";
 import jwt from "jsonwebtoken";
 
+import { DEFAULT_ROLE, ROLES } from "../constants/roles";
 import { Prisma } from "../../generated/prisma/client";
 
 export const getUsers = async (req, res) => {
@@ -41,6 +42,41 @@ export const createUser = async (req, res) => {
       name,
       email,
       password,
+    });
+
+    res.status(201).json(user);
+  } catch (error) {
+    console.error(error);
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return res.status(409).json({
+        message: "Email already exists",
+      });
+    }
+
+    res.status(500).json({
+      message: "Something went wrong on the server",
+    });
+  }
+};
+
+export const createManagedUser = async (req, res) => {
+  const { name, email, password, role } = req.body;
+
+  if (role !== undefined && !Object.values(ROLES).includes(role)) {
+    return res
+      .status(400)
+      .json({ message: "Role must be one of: ADMIN, FINANCE, TEACHER, STUDENT" });
+  }
+
+  try {
+    const user = await createUserService({
+      name: String(name).trim(),
+      email: String(email).trim(),
+      password,
+      role: role ?? DEFAULT_ROLE,
     });
 
     res.status(201).json(user);

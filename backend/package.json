@@ -6,6 +6,7 @@
   "scripts": {
     "start": "tsx src/server.js",
     "seed": "tsx src/scripts/seed.js",
+    "backfill:teachers": "tsx src/scripts/backfill-teacher-accounts.js",
     "test": "tsx --test --test-concurrency=1 \"test/*.test.js\""
   },
   "keywords": [],

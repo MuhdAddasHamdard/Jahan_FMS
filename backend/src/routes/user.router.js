@@ -6,6 +6,7 @@ import {
   getUsers,
   getTeachersController,
   createUser,
+  createManagedUser,
   loginUser,
   getCurrentUser,
   updateCurrentUser,
@@ -26,6 +27,13 @@ router.get(
   getTeachersController,
 );
 router.post("/", validateUser, createUser);
+router.post(
+  "/manage",
+  authenticateUser,
+  authorizeRole(ROLES.ADMIN),
+  validateUser,
+  createManagedUser,
+);
 router.post("/login", loginUser);
 router.get("/me", authenticateUser, getCurrentUser);
 router.patch(

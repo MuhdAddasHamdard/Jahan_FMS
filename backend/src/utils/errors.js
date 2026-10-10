@@ -11,6 +11,10 @@ export const businessErrorToResponse = (error) => {
     },
     FEETYPE_NOT_FOUND: { status: 404, message: "Fee type not found" },
     CLASS_NOT_FOUND: { status: 404, message: "Class not found" },
+    CLASS_TEACHER_REQUIRED: {
+      status: 400,
+      message: "Choose a teacher for this class",
+    },
     CLASS_DELETE_FORBIDDEN: {
       status: 403,
       message: "Only an admin or finance user can delete this class.",
@@ -52,6 +56,26 @@ export const businessErrorToResponse = (error) => {
     REFUND_EXCEEDS_PAID: {
       status: 400,
       message: "Refund cannot exceed the amount collected from this student",
+    },
+    RECEIPT_INVALID_AMOUNT: {
+      status: 400,
+      message: "Enter an amount greater than zero",
+    },
+    RECEIPT_NOT_LINKED: {
+      status: 400,
+      message: "This receipt is not linked to an installment",
+    },
+    USER_EMAIL_EXISTS: {
+      status: 409,
+      message: "That email is already in use",
+    },
+    USER_PASSWORD_TOO_SHORT: {
+      status: 400,
+      message: "Password must be at least 8 characters",
+    },
+    STAFF_NO_EXISTS: {
+      status: 409,
+      message: "That staff number is already in use",
     },
     STAFF_NOT_FOUND: { status: 404, message: "Staff not found" },
     ALREADY_PAID: {

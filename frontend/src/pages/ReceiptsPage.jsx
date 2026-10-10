@@ -6,25 +6,39 @@ import Alert from "../components/Alert";
 import Modal from "../components/Modal";
 import { FormField, inputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
-import { formatNumber, formatDateTime } from "../utils/format";
+import { formatNumber, formatDate, formatDateTime } from "../utils/format";
+
+const emptyForm = {
+  studentId: "",
+  installmentId: "",
+  amount: "",
+  paidAt: "",
+  notes: "",
+};
 
 const ReceiptsPage = () => {
   const toast = useToast();
   const [receipts, setReceipts] = useState([]);
+  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(null);
-  const [notes, setNotes] = useState("");
+  const [form, setForm] = useState(emptyForm);
+  const [plans, setPlans] = useState([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    api
-      .get("/fees/receipts")
-      .then((data) => {
+    Promise.all([
+      api.get("/fees/receipts"),
+      api.get("/students").catch(() => []),
+    ])
+      .then(([receiptData, studentData]) => {
         if (!cancelled) {
-          setReceipts(data);
+          setReceipts(receiptData);
+          setStudents(studentData ?? []);
           setLoading(false);
         }
       })
@@ -40,23 +54,87 @@ const ReceiptsPage = () => {
     };
   }, []);
 
+  const loadPlans = async (studentId) => {
+    if (!studentId) {
+      setPlans([]);
+      return;
+    }
+    setLoadingPlans(true);
+    try {
+      setPlans(await api.get(`/fees/students/${studentId}/installments`));
+    } catch {
+      setPlans([]);
+    } finally {
+      setLoadingPlans(false);
+    }
+  };
+
   const openEdit = (receipt) => {
     setEditing(receipt);
-    setNotes(receipt.notes ?? "");
+    setForm({
+      studentId: receipt.student ? String(receipt.student.id) : "",
+      installmentId: receipt.installmentId ? String(receipt.installmentId) : "",
+      amount: String(receipt.amount ?? ""),
+      paidAt: receipt.paidAt ? String(receipt.paidAt).slice(0, 10) : "",
+      notes: receipt.notes ?? "",
+    });
+    setPlans([]);
+    if (receipt.student) {
+      loadPlans(receipt.student.id);
+    }
   };
+
+  const handleStudentChange = (event) => {
+    const studentId = event.target.value;
+    setForm((current) => ({ ...current, studentId, installmentId: "" }));
+    loadPlans(studentId);
+  };
+
+  const installmentOptions = plans.flatMap((plan) =>
+    plan.installments.map((installment) => {
+      const isCurrent = installment.id === editing?.installmentId;
+      const remaining =
+        installment.remaining + (isCurrent ? Number(editing?.amount ?? 0) : 0);
+      return {
+        id: installment.id,
+        label: `${plan.feeType.name} · due ${formatDate(installment.dueDate) || "—"}`,
+        remaining,
+      };
+    }),
+  );
+
+  const selectedOption = installmentOptions.find(
+    (option) => String(option.id) === form.installmentId,
+  );
 
   const handleSave = async (event) => {
     event.preventDefault();
+
+    const amount = Number(form.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("Enter an amount greater than zero");
+      return;
+    }
+
     setSaving(true);
     try {
-      const updated = await api.patch(`/fees/receipts/${editing.id}`, {
-        notes: notes.trim(),
-      });
+      const payload = {
+        amount,
+        paidAt: form.paidAt || undefined,
+        notes: form.notes.trim(),
+      };
+      if (form.installmentId) {
+        payload.installmentId = Number(form.installmentId);
+      }
+
+      const updated = await api.patch(`/fees/receipts/${editing.id}`, payload);
       setReceipts((current) =>
-        current.map((receipt) => (receipt.id === updated.id ? { ...receipt, ...updated } : receipt)),
+        current.map((receipt) =>
+          receipt.id === updated.id ? { ...receipt, ...updated } : receipt,
+        ),
       );
       setEditing(null);
-      toast.success("Receipt notes updated");
+      toast.success("Receipt updated");
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -68,7 +146,7 @@ const ReceiptsPage = () => {
     <div>
       <PageHeader
         title="Receipts"
-        description="Payment receipts issued against fee installments. Amounts and dates are fixed once issued, but you can attach notes."
+        description="Payment receipts issued against fee installments. You can correct the student, installment, amount, date and notes."
       />
 
       {error && (
@@ -126,7 +204,7 @@ const ReceiptsPage = () => {
                       onClick={() => openEdit(receipt)}
                       className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
                     >
-                      Edit notes
+                      Edit
                     </button>
                   </td>
                 </tr>
@@ -139,7 +217,7 @@ const ReceiptsPage = () => {
       <Modal
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
-        title="Edit receipt notes"
+        title="Edit receipt"
         description={editing ? `Receipt ${editing.number}` : undefined}
         footer={
           <>
@@ -161,19 +239,91 @@ const ReceiptsPage = () => {
           </>
         }
       >
-        <form id="receipt-edit-form" onSubmit={handleSave} className="space-y-4">
-          <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-            <p>
-              Amount: <span className="font-semibold">{formatNumber(editing?.amount)}</span>
-            </p>
-            <p>
-              Paid at:{" "}
-              <span className="font-semibold">{formatDateTime(editing?.paidAt)}</span>
-            </p>
-            <p className="mt-1 text-slate-500">
-              Amount and date cannot be changed after a receipt is issued.
-            </p>
+        <form id="receipt-edit-form" onSubmit={handleSave} className="space-y-3">
+          <FormField
+            label="Student"
+            htmlFor="receipt-student"
+            hint="Changing the student lets you move this receipt to another student's installment"
+          >
+            <select
+              id="receipt-student"
+              value={form.studentId}
+              onChange={handleStudentChange}
+              className={inputClass}
+            >
+              <option value="">No student</option>
+              {students.map((student) => (
+                <option key={student.id} value={student.id}>
+                  {student.name} ({student.admissionNo})
+                </option>
+              ))}
+            </select>
+          </FormField>
+
+          <FormField
+            label="Installment"
+            htmlFor="receipt-installment"
+            hint={
+              selectedOption
+                ? `Remaining before this receipt: ${formatNumber(selectedOption.remaining)}`
+                : "Pick the installment this payment belongs to"
+            }
+          >
+            <select
+              id="receipt-installment"
+              value={form.installmentId}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  installmentId: event.target.value,
+                }))
+              }
+              disabled={!form.studentId || loadingPlans}
+              className={`${inputClass} ${
+                !form.studentId || loadingPlans
+                  ? "cursor-not-allowed bg-slate-50 text-slate-400"
+                  : ""
+              }`}
+            >
+              <option value="">
+                {loadingPlans ? "Loading installments..." : "Select an installment"}
+              </option>
+              {installmentOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label} · remaining {formatNumber(option.remaining)}
+                </option>
+              ))}
+            </select>
+          </FormField>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField label="Amount" htmlFor="receipt-amount">
+              <input
+                id="receipt-amount"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.amount}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, amount: event.target.value }))
+                }
+                className={inputClass}
+              />
+            </FormField>
+
+            <FormField label="Paid at" htmlFor="receipt-paid-at">
+              <input
+                id="receipt-paid-at"
+                type="date"
+                value={form.paidAt}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, paidAt: event.target.value }))
+                }
+                className={inputClass}
+              />
+            </FormField>
           </div>
+
           <FormField
             label="Notes"
             htmlFor="receipt-notes"
@@ -182,8 +332,10 @@ const ReceiptsPage = () => {
             <textarea
               id="receipt-notes"
               rows={3}
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
+              value={form.notes}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, notes: event.target.value }))
+              }
               placeholder="e.g. Paid by cheque #1234"
               className={inputClass}
             />

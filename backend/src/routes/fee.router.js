@@ -23,6 +23,7 @@ import {
   deleteFeePlanController,
   collectFeePaymentController,
   getReceiptsController,
+  getStudentInstallmentsController,
   updateReceiptController,
 } from "../controllers/fee.controller";
 
@@ -46,5 +47,7 @@ router.post("/payments", validateFeePayment, collectFeePaymentController);
 
 router.get("/receipts", getReceiptsController);
 router.patch("/receipts/:id", validateReceiptUpdate, updateReceiptController);
+
+router.get("/students/:studentId/installments", getStudentInstallmentsController);
 
 export default router;

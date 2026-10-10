@@ -96,13 +96,35 @@ export const validateFeePlanUpdate = (req, res, next) => {
 };
 
 export const validateReceiptUpdate = (req, res, next) => {
-  const { notes } = req.body;
+  const { notes, amount, paidAt, installmentId } = req.body;
+  const keys = Object.keys(req.body);
 
-  if (notes === undefined) {
+  if (keys.length === 0) {
     return res.status(400).json({ message: "Nothing to update" });
   }
 
-  if (notes !== null && typeof notes !== "string") {
+  for (const key of keys) {
+    if (!["notes", "amount", "paidAt", "installmentId"].includes(key)) {
+      return res.status(400).json({ message: `Field "${key}" is not updatable` });
+    }
+  }
+
+  if (amount !== undefined && !isPositiveNumber(amount)) {
+    return res.status(400).json({ message: "amount must be a positive number" });
+  }
+
+  if (paidAt !== undefined && (typeof paidAt !== "string" || Number.isNaN(Date.parse(paidAt)))) {
+    return res.status(400).json({ message: "paidAt must be a valid date" });
+  }
+
+  if (
+    installmentId !== undefined &&
+    (installmentId === null || Number.isNaN(Number(installmentId)))
+  ) {
+    return res.status(400).json({ message: "installmentId must be a number" });
+  }
+
+  if (notes !== undefined && notes !== null && typeof notes !== "string") {
     return res.status(400).json({ message: "notes must be a string" });
   }
 
