@@ -1,7 +1,9 @@
-export const inputClass =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100";
+import Icon from "./Icons";
 
-export const errorInputClass = `${inputClass} border-red-400 focus:border-red-500 focus:ring-red-100`;
+export const inputClass = "input";
+
+export const errorInputClass =
+  "input border-red-400 focus:border-red-500 focus:shadow-[0_0_0_3px_rgba(239,68,68,0.18)]";
 
 export const FormField = ({
   label,
@@ -13,21 +15,32 @@ export const FormField = ({
   children,
 }) => (
   <div className={className}>
-    <label
-      htmlFor={htmlFor}
-      className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500"
-    >
-      {label}
-    </label>
+    {label && (
+      <label
+        htmlFor={htmlFor}
+        className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]"
+      >
+        {label}
+      </label>
+    )}
     {children}
-    {hint && <p className="mt-1 text-[11px] text-slate-400">{hint}</p>}
+    {hint && !error && (
+      <p className="mt-1.5 text-[11px] text-[color:var(--text-faint)]">{hint}</p>
+    )}
     {error && (
-      <p className="mt-1 text-[11px] font-semibold text-red-600" role="alert">
+      <p
+        className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-[color:var(--danger)]"
+        role="alert"
+      >
+        <Icon name="warning" className="h-3.5 w-3.5" />
         {error}
       </p>
     )}
     {!error && success && (
-      <p className="mt-1 text-[11px] font-semibold text-teal-600">{success}</p>
+      <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-[color:var(--brand-strong)]">
+        <Icon name="success" className="h-3.5 w-3.5" />
+        {success}
+      </p>
     )}
   </div>
 );

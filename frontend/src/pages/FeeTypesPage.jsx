@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import PageHeader from "../components/PageHeader";
-import Spinner from "../components/Spinner";
 import Alert from "../components/Alert";
 import Modal from "../components/Modal";
 import ConfirmDialog from "../components/ConfirmDialog";
+import DataTable from "../components/DataTable";
 import { FormField, inputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
 import { formatNumber } from "../utils/format";
@@ -16,6 +16,8 @@ const PERIOD_HINTS = {
   SESSION: "Charged once per academic session",
   ONE_TIME: "Charged a single time (e.g. admission)",
 };
+
+const emptyFeeType = { name: "", amount: "", period: "MONTHLY" };
 
 const FeeTypeFields = ({ value, onChange, idPrefix }) => (
   <div className="grid gap-3 sm:grid-cols-3">
@@ -76,41 +78,16 @@ const validate = (value) => {
   return "";
 };
 
-const FeeTypeRow = ({ feeType, onEdit, onDelete }) => (
-  <li className="flex items-center justify-between border-b border-slate-100 px-4 py-3 last:border-0">
-    <div>
-      <p className="text-sm font-medium text-slate-900">{feeType.name}</p>
-      <p className="text-xs text-slate-500">{feeType.period.replace("_", " ")}</p>
-    </div>
-    <div className="flex items-center gap-3">
-      <span className="text-sm font-semibold text-slate-900">
-        {formatNumber(feeType.amount)}
-      </span>
-      <button
-        onClick={() => onEdit(feeType)}
-        className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
-      >
-        Edit
-      </button>
-      <button
-        onClick={() => onDelete(feeType)}
-        className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
-      >
-        Delete
-      </button>
-    </div>
-  </li>
-);
-
 const FeeTypesPage = () => {
   const toast = useToast();
   const [feeTypes, setFeeTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [draft, setDraft] = useState({ name: "", amount: "", period: "MONTHLY" });
+  const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState(emptyFeeType);
   const [editing, setEditing] = useState(null);
-  const [editValue, setEditValue] = useState({ name: "", amount: "", period: "MONTHLY" });
+  const [editValue, setEditValue] = useState(emptyFeeType);
   const [deleting, setDeleting] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
 
@@ -142,6 +119,12 @@ const FeeTypesPage = () => {
     };
   }, []);
 
+  const openCreate = () => {
+    setDraft(emptyFeeType);
+    setError("");
+    setCreating(true);
+  };
+
   const handleCreate = async (event) => {
     event.preventDefault();
     const message = validate(draft);
@@ -158,7 +141,8 @@ const FeeTypesPage = () => {
         amount: Number(draft.amount),
         period: draft.period,
       });
-      setDraft({ name: "", amount: "", period: "MONTHLY" });
+      setCreating(false);
+      setDraft(emptyFeeType);
       toast.success("Fee type added");
       await refresh();
     } catch (err) {
@@ -217,54 +201,118 @@ const FeeTypesPage = () => {
     }
   };
 
+  const columns = [
+    {
+      key: "name",
+      header: "Fee name",
+      sortable: true,
+      render: (feeType) => (
+        <span className="font-medium text-slate-900">{feeType.name}</span>
+      ),
+    },
+    {
+      key: "period",
+      header: "Billing period",
+      sortable: true,
+      render: (feeType) => (
+        <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+          {feeType.period.replace("_", " ")}
+        </span>
+      ),
+    },
+    {
+      key: "amount",
+      header: "Default amount",
+      align: "right",
+      sortable: true,
+      sortValue: (feeType) => Number(feeType.amount),
+      render: (feeType) => (
+        <span className="font-semibold text-slate-900">
+          {formatNumber(feeType.amount)}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div>
       <PageHeader
         title="Fee Types"
-        description="Define the fees you charge, like tuition, admission and session charges. Fee types are then assigned to students through fee plans."
+        description="Define the fees you charge, like tuition, admission and session charges."
       />
 
-      <form
-        onSubmit={handleCreate}
-        className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-      >
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Add a fee type</h2>
-        <FeeTypeFields value={draft} onChange={setDraft} idPrefix="fee-type-create" />
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-4 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
-        >
-          {submitting ? "Saving..." : "Add fee type"}
-        </button>
-      </form>
-
-      {error && (
+      {error && !creating && (
         <div className="mb-4">
           <Alert type="error" message={error} />
         </div>
       )}
 
-      {loading ? (
-        <div className="flex h-48 items-center justify-center">
-          <Spinner />
-        </div>
-      ) : feeTypes.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <p className="text-sm text-slate-400">No fee types yet.</p>
-        </div>
-      ) : (
-        <ul className="rounded-xl border border-slate-200 bg-white shadow-sm">
-          {feeTypes.map((feeType) => (
-            <FeeTypeRow
-              key={feeType.id}
-              feeType={feeType}
-              onEdit={openEdit}
-              onDelete={setDeleting}
-            />
-          ))}
-        </ul>
-      )}
+      <DataTable
+        title="All fee types"
+        count={feeTypes.length}
+        loading={loading}
+        rows={feeTypes}
+        columns={columns}
+        searchPlaceholder="Search fee types..."
+        searchKeys={["name", "period"]}
+        defaultSort={{ key: "createdAt", direction: "desc" }}
+        filters={[
+          {
+            key: "period",
+            label: "Filter by period",
+            options: [
+              { value: "", label: "All periods" },
+              ...PERIODS.map((period) => ({
+                value: period,
+                label: period.replace("_", " "),
+              })),
+            ],
+            value: (feeType) => feeType.period,
+          },
+        ]}
+        addButton={{ label: "Add fee type", onClick: openCreate }}
+        emptyMessage="No fee types yet."
+        rowActions={(feeType) => [
+          { label: "Edit", icon: "edit", onClick: () => openEdit(feeType) },
+          {
+            label: "Delete",
+            icon: "trash",
+            tone: "danger",
+            onClick: () => setDeleting(feeType),
+          },
+        ]}
+      />
+
+      <Modal
+        open={creating}
+        onClose={() => setCreating(false)}
+        title="Add fee type"
+        description="Define a fee you can then assign to students through fee plans."
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setCreating(false)}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="fee-type-create-form"
+              disabled={submitting}
+              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+            >
+              {submitting ? "Saving..." : "Add fee type"}
+            </button>
+          </>
+        }
+      >
+        <form id="fee-type-create-form" onSubmit={handleCreate} className="space-y-3">
+          {error && <Alert type="error" message={error} />}
+          <FeeTypeFields value={draft} onChange={setDraft} idPrefix="fee-type-create" />
+        </form>
+      </Modal>
 
       <Modal
         open={Boolean(editing)}

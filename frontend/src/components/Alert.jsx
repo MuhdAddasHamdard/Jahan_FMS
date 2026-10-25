@@ -1,20 +1,20 @@
-const Alert = ({ type = "info", message }) => {
-  if (!message) {
-    return null;
-  }
+import Icon from "./Icons";
 
-  const styles = {
-    error: "border-red-200 bg-red-50 text-red-700",
-    success: "border-teal-200 bg-teal-50 text-teal-700",
-    info: "border-slate-200 bg-slate-50 text-slate-700",
-  };
+const TYPES = {
+  error: { className: "alert-error", icon: "error" },
+  success: { className: "alert-success", icon: "success" },
+  warning: { className: "alert-warning", icon: "warning" },
+  info: { className: "alert-info", icon: "info" },
+};
+
+const Alert = ({ type = "info", message, className = "" }) => {
+  if (!message) return null;
+  const tone = TYPES[type] || TYPES.info;
 
   return (
-    <div
-      className={`rounded-lg border px-4 py-3 text-sm ${styles[type] || styles.info}`}
-      role="alert"
-    >
-      {message}
+    <div className={`alert ${tone.className} ${className}`} role="alert">
+      <Icon name={tone.icon} className="mt-0.5 h-4 w-4 shrink-0" />
+      <span className="leading-relaxed">{message}</span>
     </div>
   );
 };

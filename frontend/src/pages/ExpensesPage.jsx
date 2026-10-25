@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import PageHeader from "../components/PageHeader";
-import Spinner from "../components/Spinner";
 import Alert from "../components/Alert";
 import Modal from "../components/Modal";
 import ConfirmDialog from "../components/ConfirmDialog";
+import DataTable from "../components/DataTable";
 import { FormField, inputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
 import { formatNumber, formatDate } from "../utils/format";
@@ -65,31 +65,8 @@ const validateExpense = (value) => {
   return "";
 };
 
-const ExpenseRow = ({ expense, onEdit, onDelete }) => (
-  <li className="flex items-center justify-between border-b border-slate-100 px-4 py-3 last:border-0">
-    <div>
-      <p className="text-sm font-medium text-slate-900">{expense.description}</p>
-      <p className="text-xs text-slate-500">{formatDate(expense.paidOn)}</p>
-    </div>
-    <div className="flex items-center gap-3">
-      <span className="text-sm font-semibold text-red-600">
-        {formatNumber(expense.amount)}
-      </span>
-      <button
-        onClick={() => onEdit(expense)}
-        className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
-      >
-        Edit
-      </button>
-      <button
-        onClick={() => onDelete(expense)}
-        className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
-      >
-        Delete
-      </button>
-    </div>
-  </li>
-);
+const toDateInput = (value) =>
+  value ? new Date(value).toISOString().slice(0, 10) : "";
 
 const ExpensesPage = () => {
   const toast = useToast();
@@ -99,6 +76,7 @@ const ExpensesPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState(emptyExpense);
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState(emptyExpense);
@@ -106,11 +84,7 @@ const ExpensesPage = () => {
   const [deleteBusy, setDeleteBusy] = useState(false);
 
   const refresh = async () => {
-    const params = new URLSearchParams();
-    if (from) params.set("from", from);
-    if (to) params.set("to", to);
-    const query = params.toString();
-    const data = await api.get(`/expenses${query ? `?${query}` : ""}`);
+    const data = await api.get("/expenses");
     setExpenses(data);
   };
 
@@ -137,6 +111,25 @@ const ExpensesPage = () => {
     };
   }, []);
 
+  const visibleExpenses = useMemo(() => {
+    return expenses.filter((expense) => {
+      const date = expense.paidOn ? new Date(expense.paidOn) : null;
+      if (from && date && date < new Date(from)) return false;
+      if (to) {
+        const upper = new Date(to);
+        upper.setHours(23, 59, 59, 999);
+        if (date && date > upper) return false;
+      }
+      return true;
+    });
+  }, [expenses, from, to]);
+
+  const openCreate = () => {
+    setDraft(emptyExpense);
+    setError("");
+    setCreating(true);
+  };
+
   const handleCreate = async (event) => {
     event.preventDefault();
     const message = validateExpense(draft);
@@ -153,6 +146,7 @@ const ExpensesPage = () => {
         amount: Number(draft.amount),
         paidOn: draft.paidOn || undefined,
       });
+      setCreating(false);
       setDraft(emptyExpense);
       toast.success("Expense recorded");
       await refresh();
@@ -168,7 +162,7 @@ const ExpensesPage = () => {
     setEditValue({
       description: expense.description,
       amount: String(expense.amount),
-      paidOn: expense.paidOn ? new Date(expense.paidOn).toISOString().slice(0, 10) : "",
+      paidOn: toDateInput(expense.paidOn),
     });
   };
 
@@ -212,18 +206,37 @@ const ExpensesPage = () => {
     }
   };
 
-  const handleFilter = async (event) => {
-    event.preventDefault();
-    setLoading(true);
-    setError("");
-    try {
-      await refresh();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const columns = [
+    {
+      key: "description",
+      header: "Description",
+      sortable: true,
+      render: (expense) => (
+        <span className="font-medium text-slate-900">{expense.description}</span>
+      ),
+    },
+    {
+      key: "paidOn",
+      header: "Payment date",
+      sortable: true,
+      sortValue: (expense) => (expense.paidOn ? new Date(expense.paidOn).getTime() : 0),
+      render: (expense) => (
+        <span className="text-slate-500">{formatDate(expense.paidOn)}</span>
+      ),
+    },
+    {
+      key: "amount",
+      header: "Amount",
+      align: "right",
+      sortable: true,
+      sortValue: (expense) => Number(expense.amount),
+      render: (expense) => (
+        <span className="font-semibold text-red-600">
+          {formatNumber(expense.amount)}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div>
@@ -232,77 +245,97 @@ const ExpensesPage = () => {
         description="Record institute operating expenses like utilities and supplies."
       />
 
-      <form
-        onSubmit={handleCreate}
-        className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-      >
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Record an expense</h2>
-        <ExpenseFields value={draft} onChange={setDraft} idPrefix="expense-create" />
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-4 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
-        >
-          {submitting ? "Saving..." : "Record expense"}
-        </button>
-      </form>
-
-      {error && (
+      {error && !creating && (
         <div className="mb-4">
           <Alert type="error" message={error} />
         </div>
       )}
 
-      <form
-        onSubmit={handleFilter}
-        className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end"
-      >
-        <FormField label="From" htmlFor="expense-filter-from">
-          <input
-            id="expense-filter-from"
-            type="date"
-            value={from}
-            onChange={(event) => setFrom(event.target.value)}
-            className={inputClass}
-          />
-        </FormField>
-        <FormField label="To" htmlFor="expense-filter-to">
-          <input
-            id="expense-filter-to"
-            type="date"
-            value={to}
-            onChange={(event) => setTo(event.target.value)}
-            className={inputClass}
-          />
-        </FormField>
-        <button
-          type="submit"
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
-        >
-          Filter
-        </button>
-      </form>
+      <DataTable
+        title="All expenses"
+        count={visibleExpenses.length}
+        loading={loading}
+        rows={visibleExpenses}
+        columns={columns}
+        searchPlaceholder="Search expenses..."
+        searchKeys={["description"]}
+        defaultSort={{ key: "paidOn", direction: "desc" }}
+        addButton={{ label: "Add expense", onClick: openCreate }}
+        emptyMessage="No expenses found."
+        toolbar={
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="text-xs font-semibold text-slate-500">
+              <span className="mb-1 block">From</span>
+              <input
+                type="date"
+                value={from}
+                onChange={(event) => setFrom(event.target.value)}
+                className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-teal-500"
+              />
+            </label>
+            <label className="text-xs font-semibold text-slate-500">
+              <span className="mb-1 block">To</span>
+              <input
+                type="date"
+                value={to}
+                onChange={(event) => setTo(event.target.value)}
+                className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-teal-500"
+              />
+            </label>
+            {(from || to) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFrom("");
+                  setTo("");
+                }}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        }
+        rowActions={(expense) => [
+          { label: "Edit", icon: "edit", onClick: () => openEdit(expense) },
+          {
+            label: "Delete",
+            icon: "trash",
+            tone: "danger",
+            onClick: () => setDeleting(expense),
+          },
+        ]}
+      />
 
-      {loading ? (
-        <div className="flex h-48 items-center justify-center">
-          <Spinner />
-        </div>
-      ) : expenses.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <p className="text-sm text-slate-400">No expenses found.</p>
-        </div>
-      ) : (
-        <ul className="rounded-xl border border-slate-200 bg-white shadow-sm">
-          {expenses.map((expense) => (
-            <ExpenseRow
-              key={expense.id}
-              expense={expense}
-              onEdit={openEdit}
-              onDelete={setDeleting}
-            />
-          ))}
-        </ul>
-      )}
+      <Modal
+        open={creating}
+        onClose={() => setCreating(false)}
+        title="Record an expense"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setCreating(false)}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="expense-create-form"
+              disabled={submitting}
+              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+            >
+              {submitting ? "Saving..." : "Record expense"}
+            </button>
+          </>
+        }
+      >
+        <form id="expense-create-form" onSubmit={handleCreate} className="space-y-3">
+          {error && <Alert type="error" message={error} />}
+          <ExpenseFields value={draft} onChange={setDraft} idPrefix="expense-create" />
+        </form>
+      </Modal>
 
       <Modal
         open={Boolean(editing)}

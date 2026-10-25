@@ -1,39 +1,21 @@
-import { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/auth-context";
 import { useTheme } from "../theme/theme-context";
 import ChatBot from "./ChatBot";
-
-const ICON_PROPS = {
-  className: "h-5 w-5",
-  viewBox: "0 0 24 24",
-  fill: "currentColor",
-  "aria-hidden": true,
-};
+import Icon from "./Icons";
 
 const NAV_SECTIONS = [
   {
     title: "Overview",
     roles: ["ADMIN", "FINANCE", "TEACHER", "STUDENT"],
     items: [
-      {
-        to: "/",
-        label: "Dashboard",
-        icon: (
-          <svg {...ICON_PROPS}>
-            <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" />
-          </svg>
-        ),
-      },
+      { to: "/", label: "Dashboard", icon: "dashboard" },
       {
         to: "/reports/institute",
         label: "Institute Report",
+        icon: "office",
         roles: ["ADMIN", "FINANCE"],
-        icon: (
-          <svg {...ICON_PROPS}>
-            <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2zm14-2l4 3-4 3v-6z" />
-          </svg>
-        ),
       },
     ],
   },
@@ -41,121 +23,49 @@ const NAV_SECTIONS = [
     title: "Finance",
     roles: ["ADMIN", "FINANCE"],
     items: [
-      {
-        to: "/reports",
-        label: "Reports",
-        icon: (
-          <svg {...ICON_PROPS}>
-            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" />
-          </svg>
-        ),
-      },
-      {
-        to: "/fee-types",
-        label: "Fee Types",
-        icon: (
-          <svg {...ICON_PROPS}>
-            <path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z" />
-          </svg>
-        ),
-      },
-      {
-        to: "/fee-plans",
-        label: "Fee Plans",
-        icon: (
-          <svg {...ICON_PROPS}>
-            <path d="M20 7V5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-2h-2v2H4V3h14v4h2zm-9 3h2v-2h-2v2zm0 4h2v-2h-2v2zm2 0h6v-2h-6v2zm-2-8h2V4h-2v2zm2 2h2V6h-2v2zm-2-4h2V2h-2v2zm2 6h2v-2h-2v2z" />
-          </svg>
-        ),
-      },
-      {
-        to: "/receipts",
-        label: "Receipts",
-        icon: (
-          <svg {...ICON_PROPS}>
-            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 9h10V7H7v2zm0 4h10v-2H7v2zm0 4h6v-2H7v2z" />
-          </svg>
-        ),
-      },
-      {
-        to: "/refunds",
-        label: "Refunds",
-        icon: (
-          <svg {...ICON_PROPS}>
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-13.5l-1.41 1.41 2.09 2.09H8v2h8.18l-2.09 2.09 1.41 1.41 4.5-4.5-4.5-4.5z" />
-          </svg>
-        ),
-      },
-      {
-        to: "/staff",
-        label: "Staff & Salaries",
-        icon: (
-          <svg {...ICON_PROPS}>
-            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
-          </svg>
-        ),
-      },
-      {
-        to: "/expenses",
-        label: "Expenses",
-        icon: (
-          <svg {...ICON_PROPS}>
-            <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4v-4h16v4zm0-6H4v-2h16v2zm0-4H4V6h16v2z" />
-          </svg>
-        ),
-      },
+      { to: "/reports", label: "Reports", icon: "chart" },
+      { to: "/fee-types", label: "Fee Types", icon: "document" },
+      { to: "/fee-plans", label: "Fee Plans", icon: "wallet" },
+      { to: "/receipts", label: "Receipts", icon: "receipt" },
+      { to: "/refunds", label: "Refunds", icon: "refund" },
+      { to: "/staff", label: "Staff & Salaries", icon: "userGroup" },
+      { to: "/expenses", label: "Expenses", icon: "expense" },
     ],
   },
   {
     title: "Institute",
     roles: ["ADMIN", "FINANCE", "TEACHER"],
     items: [
-      {
-        to: "/classes",
-        label: "Classes",
-        icon: (
-          <svg {...ICON_PROPS}>
-            <path d="M12 3L2 8l10 5 10-5-10-5zM2 13l10 5 10-5-2-1-8 4-8-4-2 1z" />
-          </svg>
-        ),
-      },
-      {
-        to: "/students",
-        label: "Students",
-        icon: (
-          <svg {...ICON_PROPS}>
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-          </svg>
-        ),
-      },
+      { to: "/classes", label: "Classes", icon: "book" },
+      { to: "/students", label: "Students", icon: "student" },
     ],
   },
   {
     title: "Administration",
     roles: ["ADMIN", "FINANCE", "TEACHER", "STUDENT"],
     items: [
-      {
-        to: "/users",
-        label: "Users",
-        roles: ["ADMIN"],
-        icon: (
-          <svg {...ICON_PROPS}>
-            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
-          </svg>
-        ),
-      },
-      {
-        to: "/settings",
-        label: "Settings",
-        icon: (
-          <svg {...ICON_PROPS}>
-            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
-          </svg>
-        ),
-      },
+      { to: "/users", label: "Users", icon: "users", roles: ["ADMIN"] },
+      { to: "/settings", label: "Settings", icon: "settings" },
     ],
   },
 ];
+
+const ROUTE_META = {
+  "/": { title: "Dashboard", icon: "dashboard" },
+  "/reports": { title: "Reports", icon: "chart" },
+  "/reports/institute": { title: "Institute Report", icon: "office" },
+  "/classes": { title: "Classes", icon: "book" },
+  "/students": { title: "Students", icon: "student" },
+  "/fee-types": { title: "Fee Types", icon: "document" },
+  "/fee-plans": { title: "Fee Plans", icon: "wallet" },
+  "/receipts": { title: "Receipts", icon: "receipt" },
+  "/refunds": { title: "Refunds", icon: "refund" },
+  "/staff": { title: "Staff & Salaries", icon: "userGroup" },
+  "/expenses": { title: "Expenses", icon: "expense" },
+  "/users": { title: "Users", icon: "users" },
+  "/settings": { title: "Settings", icon: "settings" },
+  "/portal": { title: "My Portal", icon: "student" },
+};
 
 const Avatar = ({ user, className }) => {
   if (user?.avatarUrl) {
@@ -169,276 +79,529 @@ const Avatar = ({ user, className }) => {
   }
   return (
     <span
-      className={`flex items-center justify-center rounded-full bg-teal-600 font-semibold text-white ${className}`}
+      className={`flex items-center justify-center rounded-full font-semibold ${className}`}
+      style={{
+        background: "linear-gradient(140deg, var(--brand), var(--teal))",
+        color: "var(--brand-ink)",
+      }}
     >
       {(user?.name || "").charAt(0).toUpperCase() || "J"}
     </span>
   );
 };
 
-const ThemeToggle = ({ className }) => {
+const ThemeToggle = ({ className = "" }) => {
   const { theme, toggleTheme } = useTheme();
+  const dark = theme === "dark";
   return (
     <button
+      type="button"
       onClick={toggleTheme}
-      aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-      title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-      className={`rounded-lg border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white ${className}`}
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      title={dark ? "Switch to light mode" : "Switch to dark mode"}
+      className={`icon-btn ${className}`}
     >
-      {theme === "dark" ? (
-        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z" />
-        </svg>
-      ) : (
-        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z" />
-        </svg>
-      )}
+      <Icon name={dark ? "sun" : "moon"} className="h-[18px] w-[18px]" />
     </button>
   );
 };
 
-const layoutLinkClass = (collapsed) => ({ isActive }) =>
-  `flex items-center rounded-lg py-2.5 text-sm font-medium transition ${
-    collapsed ? "justify-center px-2" : "gap-3 px-3"
-  } ${
-    isActive
-      ? "bg-teal-600 text-white"
-      : "text-slate-400 hover:bg-slate-800 hover:text-white"
-  }`;
-
-const NavList = ({ items, onNavigate, collapsed = false }) => (
-  <div className={collapsed ? "space-y-4 px-2 py-4" : "space-y-6 px-3 py-4"}>
-    {items.map((section) => (
-      <div key={section.title}>
-        {!collapsed && (
-          <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-            {section.title}
-          </p>
-        )}
-        <nav className="flex flex-col gap-1">
-          {section.items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === "/"}
-              onClick={onNavigate}
-              title={collapsed ? item.label : undefined}
-              className={layoutLinkClass(collapsed)}
-            >
-              {item.icon}
-              {!collapsed && item.label}
-            </NavLink>
-          ))}
-        </nav>
-      </div>
-    ))}
+const AboutAssistant = () => (
+  <div className="rounded-xl border border-line bg-surface-2 p-3 text-xs text-muted">
+    <p className="flex items-center gap-1.5 font-semibold text-content">
+      <Icon name="sparkles" className="h-3.5 w-3.5 text-brand-strong" />
+      Jahan Assistant
+    </p>
+    <p className="mt-1 leading-relaxed">
+      Ask the AI assistant to record payments, create students or generate reports.
+    </p>
   </div>
 );
 
+const navLinkClass = (isCollapsed) => ({ isActive }) =>
+  `group relative flex items-center rounded-xl py-2.5 text-sm font-medium transition-all duration-200 ${
+    isCollapsed ? "justify-center px-2" : "gap-3 px-3"
+  } ${isActive ? "nav-active" : "text-muted hover:bg-surface-2 hover:text-content"}`;
+
+const NavGroup = ({ items, onNavigate, isCollapsed = false }) => {
+  const [closedSections, setClosedSections] = useState(() => new Set());
+
+  const toggleSection = (title) => {
+    setClosedSections((current) => {
+      const next = new Set(current);
+      if (next.has(title)) next.delete(title);
+      else next.add(title);
+      return next;
+    });
+  };
+
+  return (
+    <div className={isCollapsed ? "space-y-4 px-2 py-4" : "space-y-4 px-3 py-4"}>
+      {items.map((section) => {
+        const isClosed = !isCollapsed && closedSections.has(section.title);
+        return (
+          <div key={section.title}>
+            {!isCollapsed && (
+              <button
+                type="button"
+                onClick={() => toggleSection(section.title)}
+                aria-expanded={!isClosed}
+                className="group mb-1 flex w-full items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-faint transition hover:bg-surface-2 hover:text-content"
+              >
+                <span>{section.title}</span>
+                <Icon
+                  name="chevronDown"
+                  className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                    isClosed ? "-rotate-90" : ""
+                  }`}
+                />
+              </button>
+            )}
+            <nav className={`flex flex-col gap-1 ${isClosed ? "hidden" : ""}`}>
+              {section.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === "/"}
+                  onClick={onNavigate}
+                  title={isCollapsed ? item.label : undefined}
+                  className={navLinkClass(isCollapsed)}
+                >
+                  {({ isActive }) => (
+                    <>
+                      {isActive && !isCollapsed && (
+                        <span
+                          className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full"
+                          style={{
+                            background: "linear-gradient(var(--brand), var(--teal))",
+                          }}
+                        />
+                      )}
+                      <Icon
+                        name={item.icon}
+                        className={`h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                          isActive ? "text-brand-strong" : ""
+                        }`}
+                      />
+                      {!isCollapsed && (
+                        <span className="truncate">{item.label}</span>
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </nav>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const Brand = ({ onToggle, isCollapsed }) => (
+  <div
+    className={`flex h-16 items-center border-b border-line ${
+      isCollapsed ? "justify-center px-2" : "justify-between px-5"
+    }`}
+  >
+    <div className="flex items-center gap-2.5">
+      <span className="brand-mark flex h-9 w-9 items-center justify-center rounded-xl text-sm font-extrabold">
+        J
+      </span>
+      {!isCollapsed && (
+        <div className="leading-tight">
+          <h1 className="text-sm font-extrabold tracking-tight text-content">
+            JAHAN<span className="text-brand-strong"> FMS</span>
+          </h1>
+          <p className="text-[10px] uppercase tracking-[0.18em] text-faint">
+            Institute Finance
+          </p>
+        </div>
+      )}
+    </div>
+    {!isCollapsed && onToggle && (
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label="Collapse sidebar"
+        className="icon-btn h-8 w-8 border-transparent bg-transparent"
+      >
+        <Icon name="chevronsLeft" className="h-4 w-4" />
+      </button>
+    )}
+  </div>
+);
+
+const getBreadcrumbs = (pathname) => {
+  if (pathname === "/") return [{ label: "Dashboard" }];
+  for (const section of NAV_SECTIONS) {
+    const item = section.items.find((entry) => entry.to === pathname);
+    if (item) {
+      return [
+        { label: "Home", to: "/" },
+        { label: section.title },
+        { label: item.label },
+      ];
+    }
+  }
+  return [{ label: ROUTE_META[pathname]?.title ?? "Jahan FMS" }];
+};
+
+const TopbarBreadcrumbs = ({ pathname }) => {
+  const crumbs = getBreadcrumbs(pathname);
+  return (
+    <nav
+      aria-label="Breadcrumb"
+      className="hidden items-center gap-1.5 text-xs text-faint sm:flex"
+    >
+      {crumbs.map((crumb, index) => {
+        const isLast = index === crumbs.length - 1;
+        return (
+          <span key={`${crumb.label}-${index}`} className="flex items-center gap-1.5">
+            {index > 0 && <Icon name="chevronRight" className="h-3 w-3" />}
+            {crumb.to && !isLast ? (
+              <Link to={crumb.to} className="transition hover:text-content">
+                {crumb.label}
+              </Link>
+            ) : (
+              <span className={isLast ? "font-medium text-muted" : ""}>
+                {crumb.label}
+              </span>
+            )}
+          </span>
+        );
+      })}
+    </nav>
+  );
+};
+
 const Layout = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const { theme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem("fms-sidebar-collapsed") === "1",
   );
-  const { logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const role = user?.role;
+  const searchRef = useRef(null);
 
   useEffect(() => {
     localStorage.setItem("fms-sidebar-collapsed", collapsed ? "1" : "0");
   }, [collapsed]);
 
-  const handleLogout = () => {
+  useEffect(() => {
+    const handleKey = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+      if (event.key === "Escape") setSearchOpen(false);
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, []);
+
+  useEffect(() => {
+    if (searchOpen) searchRef.current?.focus();
+  }, [searchOpen]);
+
+  const closeOverlays = () => {
     setMenuOpen(false);
+    setNotifOpen(false);
+  };
+
+  const handleLogout = () => {
+    closeOverlays();
     logout();
     navigate("/login");
   };
 
   const canView = (itemRoles) => !itemRoles || (role && itemRoles.includes(role));
 
-  const visibleSections = NAV_SECTIONS.map((section) => ({
-    ...section,
-    items: section.items.filter((item) => canView(item.roles)),
-  }))
-    .filter((section) => canView(section.roles) && section.items.length > 0);
+  const visibleSections = useMemo(
+    () =>
+      NAV_SECTIONS.map((section) => ({
+        ...section,
+        items: section.items.filter((item) => canView(item.roles)),
+      })).filter((section) => canView(section.roles) && section.items.length > 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [role],
+  );
 
-  const closeAll = () => {
+  const searchableItems = useMemo(
+    () => visibleSections.flatMap((section) => section.items),
+    [visibleSections],
+  );
+
+  const results = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return searchableItems;
+    return searchableItems.filter((item) => item.label.toLowerCase().includes(term));
+  }, [query, searchableItems]);
+
+  const meta = ROUTE_META[location.pathname] ?? {
+    title: "Jahan FMS",
+    icon: "dashboard",
+  };
+
+  const goTo = (to) => {
+    setSearchOpen(false);
+    setQuery("");
+    closeOverlays();
+    navigate(to);
+  };
+
+  const onDesktopNavigate = () => closeOverlays();
+  const onMobileNavigate = () => {
     setSidebarOpen(false);
-    setMenuOpen(false);
+    closeOverlays();
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
-      {/* Desktop sidebar */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-20 hidden flex-col bg-slate-950 transition-all duration-200 lg:flex ${
-          collapsed ? "w-20" : "w-64"
-        }`}
-      >
-        <div
-          className={`flex h-16 items-center border-b border-slate-800 ${
-            collapsed ? "justify-center px-2" : "justify-between px-6"
+    <div className="app-shell-bg min-h-screen">
+      <div className="relative z-10">
+        {/* Desktop sidebar */}
+        <aside
+          className={`glass fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-line transition-[width] duration-300 lg:flex ${
+            collapsed ? "w-[76px]" : "w-64"
           }`}
         >
-          <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-600 text-sm font-bold text-white">
-              J
-            </span>
-            {!collapsed && (
-              <div>
-                <h1 className="text-sm font-bold tracking-tight text-white">JAHAN FMS</h1>
-                <p className="text-[10px] uppercase tracking-widest text-slate-500">
-                  Institute Management
-                </p>
-              </div>
-            )}
-          </div>
-          {!collapsed && (
+          <Brand onToggle={() => setCollapsed(true)} isCollapsed={collapsed} />
+          {collapsed && (
             <button
-              onClick={() => setCollapsed(true)}
-              aria-label="Collapse sidebar"
-              title="Collapse sidebar"
-              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+              type="button"
+              onClick={() => setCollapsed(false)}
+              aria-label="Expand sidebar"
+              className="icon-btn mx-auto mt-3 h-8 w-8 border-transparent bg-transparent"
             >
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
-              </svg>
+              <Icon name="chevronsRight" className="h-4 w-4" />
             </button>
           )}
-        </div>
-        {collapsed && (
-          <button
-            onClick={() => setCollapsed(false)}
-            aria-label="Expand sidebar"
-            title="Expand sidebar"
-            className="mx-auto mt-3 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
-          >
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z" />
-            </svg>
-          </button>
-        )}
-        <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
-          <NavList items={visibleSections} collapsed={collapsed} />
-        </div>
-      </aside>
-
-      {/* Main column */}
-      <div className={collapsed ? "lg:pl-20" : "lg:pl-64"}>
-        {/* Top bar */}
-        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900 lg:px-8">
-          <div className="flex items-center gap-2 lg:hidden">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-600 text-sm font-bold text-white">
-              J
-            </span>
-            <span className="text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100">
-              JAHAN FMS
-            </span>
+          <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
+            <NavGroup
+              items={visibleSections}
+              onNavigate={onDesktopNavigate}
+              isCollapsed={collapsed}
+            />
           </div>
-          <div className="hidden items-center gap-2 lg:flex">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-600 text-sm font-bold text-white">
-              J
-            </span>
-            <span className="text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100">
-              JAHAN FMS
-            </span>
-          </div>
+          {!collapsed && (
+            <div className="border-t border-line p-3">
+              <AboutAssistant />
+            </div>
+          )}
+        </aside>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSidebarOpen((open) => !open)}
-              className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 lg:hidden"
-              aria-label="Toggle menu"
-            >
-              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
-              </svg>
-            </button>
-            <ThemeToggle />
-
-            <div className="relative">
-              <button
-                onClick={() => setMenuOpen((open) => !open)}
-                className="flex items-center gap-2 rounded-lg p-1.5 transition hover:bg-slate-100 dark:hover:bg-slate-800"
-                aria-label="Account menu"
-              >
-                <Avatar user={user} className="h-8 w-8" />
-                <span className="hidden text-sm font-medium text-slate-900 dark:text-slate-100 md:block">
-                  {user?.name}
-                </span>
-                <svg
-                  className="hidden h-4 w-4 text-slate-500 md:block"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  aria-hidden="true"
+        {/* Main column */}
+        <div className={collapsed ? "lg:pl-[76px]" : "lg:pl-64"}>
+          {/* Top bar */}
+          <header className="glass sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-line px-4 lg:px-7">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="lg:hidden">
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(true)}
+                  className="icon-btn"
+                  aria-label="Open menu"
                 >
-                  <path d="M7 10l5 5 5-5H7z" />
-                </svg>
+                  <Icon name="menu" className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="soft-brand hidden h-10 w-10 items-center justify-center rounded-xl sm:flex">
+                  <Icon name={meta.icon} className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="truncate text-sm font-bold text-content sm:text-base">
+                    {meta.title}
+                  </h2>
+                  <TopbarBreadcrumbs pathname={location.pathname} />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="hidden items-center gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-faint transition hover:border-line-strong hover:text-muted md:flex"
+              >
+                <Icon name="search" className="h-4 w-4" />
+                <span>Search…</span>
+                <span className="ml-6 rounded-md border border-line px-1.5 py-0.5 text-[10px] font-semibold">
+                  ⌘K
+                </span>
               </button>
 
-              {menuOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                  <div className="absolute right-0 z-50 mt-2 w-52 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
-                    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-700">
-                      <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                        {user?.name}
-                      </p>
-                      <p className="truncate text-xs text-slate-500">{user?.email}</p>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setNotifOpen((open) => !open)}
+                  className="icon-btn"
+                  aria-label="Notifications"
+                  aria-expanded={notifOpen}
+                >
+                  <Icon name="bell" className="h-[18px] w-[18px]" />
+                  <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-brand-500" />
+                </button>
+                {notifOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setNotifOpen(false)}
+                    />
+                    <div className="glass-strong animate-scale-in absolute right-0 z-50 mt-2 w-72 origin-top-right overflow-hidden rounded-xl shadow-[var(--shadow-float)]">
+                      <div className="border-b border-line px-4 py-3">
+                        <p className="text-sm font-semibold text-content">
+                          Notifications
+                        </p>
+                      </div>
+                      <div className="px-4 py-6 text-center text-xs text-muted">
+                        You're all caught up.
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between px-4 py-2 text-sm text-slate-700 dark:text-slate-300">
-                      <span>Dark mode</span>
-                      <ThemeToggle />
-                    </div>
-                    <NavLink
-                      to="/settings"
+                  </>
+                )}
+              </div>
+
+              <ThemeToggle />
+
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((open) => !open)}
+                  className="flex items-center gap-2 rounded-xl p-1.5 transition hover:bg-surface-2"
+                  aria-label="Account menu"
+                  aria-expanded={menuOpen}
+                >
+                  <Avatar user={user} className="h-8 w-8 text-sm" />
+                  <span className="hidden text-sm font-semibold text-content md:block">
+                    {user?.name}
+                  </span>
+                  <Icon
+                    name="chevronDown"
+                    className="hidden h-4 w-4 text-faint md:block"
+                  />
+                </button>
+
+                {menuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
                       onClick={() => setMenuOpen(false)}
-                      className="block px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
-                    >
-                      Settings
-                    </NavLink>
-                    <button
-                      onClick={handleLogout}
-                      className="block w-full px-4 py-2 text-left text-sm text-red-600 transition hover:bg-slate-100 dark:hover:bg-slate-700"
-                    >
-                      Sign out
-                    </button>
-                  </div>
-                </>
+                    />
+                    <div className="glass-strong animate-scale-in absolute right-0 z-50 mt-2 w-60 origin-top-right overflow-hidden rounded-xl shadow-[var(--shadow-float)]">
+                      <div className="flex items-center gap-3 border-b border-line px-4 py-3">
+                        <Avatar user={user} className="h-10 w-10 text-base" />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-content">
+                            {user?.name}
+                          </p>
+                          <p className="truncate text-xs text-muted">{user?.email}</p>
+                        </div>
+                      </div>
+                      {user?.role && (
+                        <div className="px-4 py-2">
+                          <span className="badge badge-brand">{user.role}</span>
+                        </div>
+                      )}
+                      <NavLink
+                        to="/settings"
+                        onClick={closeOverlays}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-muted transition hover:bg-surface-2 hover:text-content"
+                      >
+                        <Icon name="settings" className="h-4 w-4" />
+                        Settings
+                      </NavLink>
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-danger transition hover:bg-surface-2"
+                      >
+                        <Icon name="logout" className="h-4 w-4" />
+                        Sign out
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </header>
+
+          {/* Mobile drawer */}
+          {sidebarOpen && (
+            <div className="fixed inset-0 z-40 lg:hidden">
+              <div
+                className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-fade-in"
+                onClick={() => setSidebarOpen(false)}
+              />
+              <aside className="glass-strong animate-slide-in-left absolute inset-y-0 left-0 flex w-64 flex-col border-r border-line">
+                <Brand isCollapsed={false} />
+                <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
+                  <NavGroup items={visibleSections} onNavigate={onMobileNavigate} />
+                </div>
+              </aside>
+            </div>
+          )}
+
+          {/* Main content */}
+          <main
+            key={`${location.pathname}-${theme}`}
+            className="animate-fade-in mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
+          >
+            <Outlet />
+          </main>
+        </div>
+      </div>
+
+      {/* Command palette / quick search */}
+      {searchOpen && (
+        <div className="fixed inset-0 z-[70] flex items-start justify-center p-4 pt-[12vh]">
+          <div
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-[3px] animate-fade-in"
+            onClick={() => setSearchOpen(false)}
+          />
+          <div className="glass-strong animate-scale-in relative w-full max-w-lg overflow-hidden rounded-2xl shadow-[var(--shadow-float)]">
+            <div className="flex items-center gap-3 border-b border-line px-4 py-3">
+              <Icon name="search" className="h-5 w-5 text-faint" />
+              <input
+                ref={searchRef}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search pages…"
+                className="w-full bg-transparent text-sm text-content outline-none placeholder:text-faint"
+              />
+              <kbd className="rounded-md border border-line px-1.5 py-0.5 text-[10px] font-semibold text-faint">
+                Esc
+              </kbd>
+            </div>
+            <div className="thin-scroll max-h-72 overflow-y-auto p-2">
+              {results.length === 0 ? (
+                <p className="px-3 py-8 text-center text-sm text-muted">
+                  No pages found.
+                </p>
+              ) : (
+                results.map((item) => (
+                  <button
+                    key={item.to}
+                    type="button"
+                    onClick={() => goTo(item.to)}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-muted transition hover:bg-surface-2 hover:text-content"
+                  >
+                    <Icon name={item.icon} className="h-4 w-4 text-brand-strong" />
+                    {item.label}
+                  </button>
+                ))
               )}
             </div>
           </div>
-        </header>
-
-        {/* Mobile drawer */}
-        {sidebarOpen && (
-          <div className="fixed inset-0 z-30 lg:hidden">
-            <div
-              className="absolute inset-0 bg-slate-900/50"
-              onClick={() => setSidebarOpen(false)}
-            />
-            <aside className="absolute inset-y-0 left-0 flex w-64 flex-col bg-slate-950">
-              <div className="flex h-16 items-center gap-2 px-6">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-600 text-sm font-bold text-white">
-                  J
-                </span>
-                <h1 className="text-sm font-bold text-white">JAHAN FMS</h1>
-              </div>
-              <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
-                <NavList items={visibleSections} onNavigate={closeAll} />
-              </div>
-            </aside>
-          </div>
-        )}
-
-        {/* Main content */}
-        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <Outlet />
-        </main>
-      </div>
+        </div>
+      )}
 
       <ChatBot />
     </div>

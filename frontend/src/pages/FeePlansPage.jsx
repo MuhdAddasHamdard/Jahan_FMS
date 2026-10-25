@@ -5,6 +5,7 @@ import Spinner from "../components/Spinner";
 import Alert from "../components/Alert";
 import Modal from "../components/Modal";
 import ConfirmDialog from "../components/ConfirmDialog";
+import DataTable from "../components/DataTable";
 import { FormField, inputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
 import { formatNumber, formatDate } from "../utils/format";
@@ -93,13 +94,14 @@ const PlanFields = ({ value, onChange, students, feeTypes, idPrefix }) => (
   </div>
 );
 
-const PaymentForm = ({ installment, onSubmit, submitting }) => {
+const PaymentForm = ({ installment, onSubmit, onCancel }) => {
   const remaining = Math.max(0, installment.amount - installment.paidAmount);
   const [amount, setAmount] = useState(String(remaining));
   const [date, setDate] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
 
@@ -108,11 +110,16 @@ const PaymentForm = ({ installment, onSubmit, submitting }) => {
       return;
     }
 
-    onSubmit({
-      installmentId: installment.id,
-      amount: Number(amount),
-      date: date || undefined,
-    });
+    setBusy(true);
+    try {
+      await onSubmit({
+        installmentId: installment.id,
+        amount: Number(amount),
+        date: date || undefined,
+      });
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -151,160 +158,158 @@ const PaymentForm = ({ installment, onSubmit, submitting }) => {
           />
         </FormField>
       </div>
-      <button
-        type="submit"
-        disabled={submitting}
-        className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
-      >
-        {submitting ? "Processing..." : "Collect payment"}
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+        >
+          {busy ? "Processing..." : "Collect payment"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+        >
+          Cancel
+        </button>
+      </div>
     </form>
   );
 };
 
-const PlanDetail = ({ plan, onCollect, collectingId, onDeletePlan, onEditPlan }) => (
-  <div className="space-y-3">
-    <div className="grid gap-2 sm:grid-cols-3">
-      <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
-        <p className="text-xs text-slate-400">Total</p>
-        <p className="text-lg font-bold text-slate-900">
-          {formatNumber(plan.totalAmount)}
-        </p>
-      </div>
-      <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
-        <p className="text-xs text-slate-400">Paid</p>
-        <p className="text-lg font-bold text-teal-700">
-          {formatNumber(plan.paidAmount)}
-        </p>
-      </div>
-      <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
-        <p className="text-xs text-slate-400">Balance</p>
-        <p className="text-lg font-bold text-amber-700">
-          {formatNumber(plan.balance)}
-        </p>
-      </div>
-    </div>
+const PlanDetailPanel = ({ plan, onChanged }) => {
+  const toast = useToast();
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [collectingId, setCollectingId] = useState(null);
 
-    <div className="space-y-2">
-      {plan.installments.map((installment) => (
-        <div key={installment.id} className="rounded-lg border border-slate-200 bg-white p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-slate-900">
-                {formatNumber(installment.amount)}
-              </p>
-              <p className="text-xs text-slate-500">
-                Due {formatDate(installment.dueDate)}
-                {installment.paidAmount > 0
-                  ? ` · Paid ${formatNumber(installment.paidAmount)}`
-                  : ""}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span
-                className={`rounded px-2 py-1 text-xs font-semibold ${statusClass(installment.status)}`}
-              >
-                {installment.status}
-              </span>
-              {collectingId === installment.id ? (
-                <button
-                  onClick={() => onCollect(plan, installment, "cancel")}
-                  className="rounded-md px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100"
+  const refresh = async () => {
+    const data = await api.get(`/fees/plans/${plan.id}`);
+    setDetail(data);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    api
+      .get(`/fees/plans/${plan.id}`)
+      .then((data) => {
+        if (!cancelled) {
+          setDetail(data);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          toast.error(err.message);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [plan.id, toast]);
+
+  const handleCollect = async (payload) => {
+    try {
+      await api.post("/fees/payments", payload);
+      toast.success(`Payment collected for ${plan.student.name}`);
+      setCollectingId(null);
+      await refresh();
+      onChanged?.();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-24 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (!detail) {
+    return <p className="text-sm text-slate-400">Could not load plan details.</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
+          <p className="text-xs text-slate-400">Total</p>
+          <p className="text-lg font-bold text-slate-900">
+            {formatNumber(detail.totalAmount)}
+          </p>
+        </div>
+        <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
+          <p className="text-xs text-slate-400">Paid</p>
+          <p className="text-lg font-bold text-teal-700">
+            {formatNumber(detail.paidAmount)}
+          </p>
+        </div>
+        <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
+          <p className="text-xs text-slate-400">Balance</p>
+          <p className="text-lg font-bold text-amber-700">
+            {formatNumber(detail.balance)}
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {detail.installments.map((installment) => (
+          <div key={installment.id} className="rounded-lg border border-slate-200 bg-white p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-slate-900">
+                  {formatNumber(installment.amount)}
+                </p>
+                <p className="text-xs text-slate-500">
+                  Due {formatDate(installment.dueDate)}
+                  {installment.paidAmount > 0
+                    ? ` · Paid ${formatNumber(installment.paidAmount)}`
+                    : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`rounded px-2 py-1 text-xs font-semibold ${statusClass(installment.status)}`}
                 >
-                  Cancel
-                </button>
-              ) : (
-                installment.status !== "PAID" && (
+                  {installment.status}
+                </span>
+                {collectingId !== installment.id && installment.status !== "PAID" && (
                   <button
-                    onClick={() => onCollect(plan, installment, "start")}
+                    onClick={() => setCollectingId(installment.id)}
                     className="rounded-md bg-teal-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-teal-700"
                   >
                     Collect
                   </button>
-                )
-              )}
+                )}
+              </div>
             </div>
+            {collectingId === installment.id && (
+              <PaymentForm
+                installment={installment}
+                onSubmit={handleCollect}
+                onCancel={() => setCollectingId(null)}
+              />
+            )}
           </div>
-          {collectingId === installment.id && (
-            <PaymentForm
-              installment={installment}
-              submitting={false}
-              onSubmit={(payload) => onCollect(plan, installment, "submit", payload)}
-            />
-          )}
-        </div>
-      ))}
-    </div>
-
-    <div className="flex items-center gap-3">
-      <button
-        onClick={() => onEditPlan(plan)}
-        className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
-      >
-        Edit plan
-      </button>
-      <button
-        onClick={() => onDeletePlan(plan)}
-        className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
-      >
-        Delete plan
-      </button>
-    </div>
-  </div>
-);
-
-const PlanRow = ({
-  plan,
-  detailMap,
-  onToggle,
-  isOpen,
-  onCollectPayment,
-  collectingId,
-  onDeletePlan,
-  onEditPlan,
-}) => (
-  <li className="border-b border-slate-100 last:border-0">
-    <div className="flex items-center justify-between px-4 py-3">
-      <button onClick={() => onToggle(plan)} className="flex-1 text-left">
-        <p className="text-sm font-medium text-slate-900">{plan.student.name}</p>
-        <p className="text-xs text-slate-500">
-          {plan.feeType.name} · {plan.installmentCount} installment
-          {plan.installmentCount === 1 ? "" : "s"}
-        </p>
-      </button>
-      <div className="flex items-center gap-3">
-        <div className="text-right">
-          <p className="text-sm font-semibold text-slate-900">
-            {formatNumber(plan.balance)}
-          </p>
-          <p className="text-[11px] text-slate-400">balance</p>
-        </div>
-        <span
-          className={`rounded px-2 py-1 text-xs font-semibold ${statusClass(plan.status)}`}
-        >
-          {plan.status}
-        </span>
-        <button
-          onClick={() => onToggle(plan)}
-          className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
-        >
-          {isOpen ? "Hide" : "View installments"}
-        </button>
+        ))}
       </div>
     </div>
-    {isOpen && (
-      <div className="border-t border-slate-100 bg-slate-50 px-4 py-4">
-        <PlanDetail
-          plan={detailMap[plan.id] ?? plan}
-          onCollect={onCollectPayment}
-          collectingId={collectingId}
-          onDeletePlan={onDeletePlan}
-          onEditPlan={onEditPlan}
-        />
-      </div>
-    )}
-  </li>
-);
+  );
+};
+
+const emptyPlan = {
+  studentId: "",
+  feeTypeId: "",
+  totalAmount: "",
+  installmentCount: "1",
+};
 
 const FeePlansPage = () => {
   const toast = useToast();
@@ -314,22 +319,10 @@ const FeePlansPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [openId, setOpenId] = useState(null);
-  const [detailMap, setDetailMap] = useState({});
-  const [collectingId, setCollectingId] = useState(null);
-  const [draft, setDraft] = useState({
-    studentId: "",
-    feeTypeId: "",
-    totalAmount: "",
-    installmentCount: "1",
-  });
+  const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState(emptyPlan);
   const [editing, setEditing] = useState(null);
-  const [editValue, setEditValue] = useState({
-    studentId: "",
-    feeTypeId: "",
-    totalAmount: "",
-    installmentCount: "1",
-  });
+  const [editValue, setEditValue] = useState(emptyPlan);
   const [deleting, setDeleting] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
 
@@ -358,21 +351,8 @@ const FeePlansPage = () => {
   }, []);
 
   const refreshPlans = async () => {
-    try {
-      const data = await api.get("/fees/plans");
-      setPlans(data);
-    } catch (err) {
-      toast.error(err.message);
-    }
-  };
-
-  const refreshPlanDetail = async (planId) => {
-    try {
-      const detail = await api.get(`/fees/plans/${planId}`);
-      setDetailMap((current) => ({ ...current, [planId]: detail }));
-    } catch (err) {
-      toast.error(err.message);
-    }
+    const data = await api.get("/fees/plans");
+    setPlans(data);
   };
 
   const validatePlan = (value) => {
@@ -385,11 +365,15 @@ const FeePlansPage = () => {
     return "";
   };
 
+  const openCreate = () => {
+    setDraft(emptyPlan);
+    setError("");
+    setCreating(true);
+  };
+
   const handleCreate = async (event) => {
     event.preventDefault();
-    const message = !draft.studentId
-      ? "Select a student"
-      : validatePlan(draft);
+    const message = !draft.studentId ? "Select a student" : validatePlan(draft);
     if (message) {
       setError(message);
       return;
@@ -404,7 +388,8 @@ const FeePlansPage = () => {
         totalAmount: Number(draft.totalAmount),
         installmentCount: Math.max(1, Number(draft.installmentCount) || 1),
       });
-      setDraft({ studentId: "", feeTypeId: "", totalAmount: "", installmentCount: "1" });
+      setCreating(false);
+      setDraft(emptyPlan);
       toast.success("Fee plan created");
       await refreshPlans();
     } catch (err) {
@@ -439,14 +424,13 @@ const FeePlansPage = () => {
 
     setSubmitting(true);
     try {
-      const updated = await api.patch(`/fees/plans/${editing.id}`, {
+      await api.patch(`/fees/plans/${editing.id}`, {
         feeTypeId: Number(editValue.feeTypeId),
         totalAmount: Number(editValue.totalAmount),
         installmentCount: Math.max(1, Number(editValue.installmentCount) || 1),
       });
       setEditing(null);
       toast.success("Fee plan updated");
-      setDetailMap((current) => ({ ...current, [updated.id]: updated }));
       await refreshPlans();
     } catch (err) {
       toast.error(err.message);
@@ -455,46 +439,11 @@ const FeePlansPage = () => {
     }
   };
 
-  const handleToggle = async (plan) => {
-    const nextOpen = openId === plan.id ? null : plan.id;
-    setOpenId(nextOpen);
-
-    if (nextOpen && !detailMap[plan.id]) {
-      await refreshPlanDetail(plan.id);
-    }
-  };
-
-  const handleCollectPayment = async (plan, installment, action, payload) => {
-    if (action === "start") {
-      setCollectingId(installment.id);
-      return;
-    }
-    if (action === "cancel") {
-      setCollectingId(null);
-      return;
-    }
-
-    try {
-      await api.post("/fees/payments", payload);
-      toast.success(`Payment collected for ${plan.student.name}`);
-      setCollectingId(null);
-      await refreshPlanDetail(plan.id);
-      await refreshPlans();
-    } catch (err) {
-      toast.error(err.message);
-    }
-  };
-
   const handleDelete = async () => {
     setDeleteBusy(true);
     try {
       await api.delete(`/fees/plans/${deleting.id}`);
       toast.success("Fee plan deleted");
-      setDetailMap((current) => {
-        const next = { ...current };
-        delete next[deleting.id];
-        return next;
-      });
       setDeleting(null);
       await refreshPlans();
     } catch (err) {
@@ -505,6 +454,76 @@ const FeePlansPage = () => {
     }
   };
 
+  const columns = [
+    {
+      key: "student",
+      header: "Student",
+      sortable: true,
+      sortValue: (plan) => plan.student?.name ?? "",
+      render: (plan) => (
+        <div>
+          <p className="font-medium text-slate-900">{plan.student?.name ?? "—"}</p>
+          <p className="text-xs text-slate-500">{plan.student?.admissionNo}</p>
+        </div>
+      ),
+    },
+    {
+      key: "feeType",
+      header: "Fee type",
+      sortable: true,
+      sortValue: (plan) => plan.feeType?.name ?? "",
+      render: (plan) => (
+        <div>
+          <p className="text-slate-700">{plan.feeType?.name ?? "—"}</p>
+          <p className="text-xs text-slate-500">
+            {plan.installmentCount} installment{plan.installmentCount === 1 ? "" : "s"}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "totalAmount",
+      header: "Total",
+      align: "right",
+      sortable: true,
+      render: (plan) => (
+        <span className="text-slate-700">{formatNumber(plan.totalAmount)}</span>
+      ),
+    },
+    {
+      key: "paidAmount",
+      header: "Paid",
+      align: "right",
+      sortable: true,
+      render: (plan) => (
+        <span className="text-teal-700">{formatNumber(plan.paidAmount)}</span>
+      ),
+    },
+    {
+      key: "balance",
+      header: "Balance",
+      align: "right",
+      sortable: true,
+      render: (plan) => (
+        <span className="font-semibold text-slate-900">
+          {formatNumber(plan.balance)}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      sortable: true,
+      render: (plan) => (
+        <span
+          className={`rounded px-2 py-1 text-xs font-semibold ${statusClass(plan.status)}`}
+        >
+          {plan.status}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div>
       <PageHeader
@@ -512,67 +531,96 @@ const FeePlansPage = () => {
         description="Assign a fee type to a student, split it into installments and collect payments."
       />
 
-      <form
-        onSubmit={handleCreate}
-        className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-      >
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Create a fee plan</h2>
-        <PlanFields
-          value={draft}
-          onChange={setDraft}
-          students={students}
-          feeTypes={feeTypes}
-          idPrefix="plan-create"
-        />
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-4 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
-        >
-          {submitting ? "Creating..." : "Create fee plan"}
-        </button>
-      </form>
-
-      {error && (
+      {error && !creating && (
         <div className="mb-4">
           <Alert type="error" message={error} />
         </div>
       )}
 
-      {loading ? (
-        <div className="flex h-48 items-center justify-center">
-          <Spinner />
-        </div>
-      ) : plans.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <p className="text-sm text-slate-400">No fee plans yet.</p>
-        </div>
-      ) : (
-        <ul className="rounded-xl border border-slate-200 bg-white shadow-sm">
-          {plans.map((plan) => (
-            <PlanRow
-              key={plan.id}
-              plan={plan}
-              detailMap={detailMap}
-              isOpen={openId === plan.id}
-              onToggle={handleToggle}
-              onCollectPayment={handleCollectPayment}
-              collectingId={collectingId}
-              onDeletePlan={setDeleting}
-              onEditPlan={openEdit}
-            />
-          ))}
-        </ul>
-      )}
+      <DataTable
+        title="All fee plans"
+        count={plans.length}
+        loading={loading}
+        rows={plans}
+        columns={columns}
+        searchPlaceholder="Search by student or fee type..."
+        searchValue={(plan) =>
+          [plan.student?.name, plan.student?.admissionNo, plan.feeType?.name]
+            .filter(Boolean)
+            .join(" ")
+        }
+        filters={[
+          {
+            key: "status",
+            label: "Filter by status",
+            options: [
+              { value: "", label: "All statuses" },
+              { value: "PAID", label: "Paid" },
+              { value: "PARTIAL", label: "Partial" },
+              { value: "PENDING", label: "Pending" },
+            ],
+            value: (plan) => plan.status,
+          },
+        ]}
+        defaultSort={{ key: "createdAt", direction: "desc" }}
+        addButton={{ label: "Create fee plan", onClick: openCreate }}
+        emptyMessage="No fee plans yet."
+        renderDetail={(plan) => (
+          <PlanDetailPanel plan={plan} onChanged={refreshPlans} />
+        )}
+        rowActions={(plan) => [
+          { label: "Edit", icon: "edit", onClick: () => openEdit(plan) },
+          {
+            label: "Delete",
+            icon: "trash",
+            tone: "danger",
+            onClick: () => setDeleting(plan),
+          },
+        ]}
+      />
+
+      <Modal
+        open={creating}
+        onClose={() => setCreating(false)}
+        title="Create a fee plan"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setCreating(false)}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="fee-plan-create-form"
+              disabled={submitting}
+              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+            >
+              {submitting ? "Creating..." : "Create fee plan"}
+            </button>
+          </>
+        }
+      >
+        <form id="fee-plan-create-form" onSubmit={handleCreate} className="space-y-4">
+          {error && <Alert type="error" message={error} />}
+          <PlanFields
+            value={draft}
+            onChange={setDraft}
+            students={students}
+            feeTypes={feeTypes}
+            idPrefix="plan-create"
+          />
+        </form>
+      </Modal>
 
       <Modal
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
         title="Edit fee plan"
         description={
-          editing
-            ? `${editing.student.name} · ${editing.feeType.name}`
-            : undefined
+          editing ? `${editing.student.name} · ${editing.feeType.name}` : undefined
         }
         footer={
           <>
@@ -613,7 +661,7 @@ const FeePlansPage = () => {
         title="Delete fee plan"
         message={
           deleting
-            ? `The fee plan for ${deleting.student.name} (${deleting.feeType.name}) will be removed. Plans with payments cannot be deleted.`
+            ? `The fee plan for ${deleting.student?.name} (${deleting.feeType?.name}) will be removed. Plans with payments cannot be deleted.`
             : ""
         }
         busy={deleteBusy}

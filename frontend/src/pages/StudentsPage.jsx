@@ -6,18 +6,17 @@ import Spinner from "../components/Spinner";
 import Alert from "../components/Alert";
 import Modal from "../components/Modal";
 import ConfirmDialog from "../components/ConfirmDialog";
+import DataTable from "../components/DataTable";
 import { FormField, inputClass, errorInputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
 import { formatNumber, formatDate } from "../utils/format";
 import { PASSWORD_RULE, passwordLengthError } from "../utils/password";
 
-const STATUSES = ["ACTIVE", "INACTIVE", "GRADUATED", "SUSPENDED"];
+const STATUSES = ["ACTIVE", "INACTIVE"];
 
 const STATUS_HINTS = {
   ACTIVE: "Currently enrolled",
   INACTIVE: "Temporarily not attending",
-  GRADUATED: "Completed the course",
-  SUSPENDED: "Enrolment paused",
 };
 
 const statusClass = (status) => {
@@ -38,6 +37,9 @@ const emptyStudent = {
   email: "",
   classId: "",
   status: "ACTIVE",
+  feeTypeId: "",
+  feeAmount: "",
+  installmentCount: "1",
 };
 
 const StudentFields = ({ value, onChange, classes, idPrefix, lockAdmissionNo = false }) => (
@@ -149,6 +151,88 @@ const StudentFields = ({ value, onChange, classes, idPrefix, lockAdmissionNo = f
   </div>
 );
 
+const FeePlanFields = ({ value, onChange, feeTypes, idPrefix }) => {
+  const selectedType = feeTypes.find(
+    (type) => String(type.id) === String(value.feeTypeId),
+  );
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+        Fee plan (optional)
+      </h3>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <FormField
+          label="Fee type"
+          htmlFor={`${idPrefix}-fee-type`}
+          hint="Leave empty to set up fees later"
+        >
+          <select
+            id={`${idPrefix}-fee-type`}
+            value={value.feeTypeId}
+            onChange={(event) =>
+              onChange({ ...value, feeTypeId: event.target.value, feeAmount: "" })
+            }
+            className={inputClass}
+          >
+            <option value="">No fee plan</option>
+            {feeTypes.map((type) => (
+              <option key={type.id} value={type.id}>
+                {type.name} · {formatNumber(type.amount)}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField
+          label="Total fee amount"
+          htmlFor={`${idPrefix}-fee-amount`}
+          hint={
+            selectedType
+              ? `Defaults to ${formatNumber(selectedType.amount)}`
+              : "Set the fee type first"
+          }
+        >
+          <input
+            id={`${idPrefix}-fee-amount`}
+            type="number"
+            min="0"
+            step="0.01"
+            value={value.feeAmount}
+            onChange={(event) => onChange({ ...value, feeAmount: event.target.value })}
+            disabled={!value.feeTypeId}
+            placeholder={selectedType ? String(selectedType.amount) : ""}
+            className={`${inputClass} ${
+              !value.feeTypeId ? "cursor-not-allowed bg-slate-50 text-slate-400" : ""
+            }`}
+          />
+        </FormField>
+
+        <FormField
+          label="Installments"
+          htmlFor={`${idPrefix}-installments`}
+          hint="How many payments to split the fee into"
+        >
+          <input
+            id={`${idPrefix}-installments`}
+            type="number"
+            min="1"
+            step="1"
+            value={value.installmentCount}
+            onChange={(event) =>
+              onChange({ ...value, installmentCount: event.target.value })
+            }
+            disabled={!value.feeTypeId}
+            className={`${inputClass} ${
+              !value.feeTypeId ? "cursor-not-allowed bg-slate-50 text-slate-400" : ""
+            }`}
+          />
+        </FormField>
+      </div>
+    </div>
+  );
+};
+
 const InstallmentRow = ({ installment }) => (
   <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
     <div>
@@ -253,9 +337,7 @@ const AccountForm = ({ onSubmit, submitting, idPrefix }) => {
           htmlFor={`${idPrefix}-account-password`}
           hint="At least 8 characters"
           error={passwordError}
-          success={
-            password && !passwordError ? PASSWORD_RULE.label + " ✓" : ""
-          }
+          success={password && !passwordError ? PASSWORD_RULE.label + " ✓" : ""}
         >
           <input
             id={`${idPrefix}-account-password`}
@@ -278,244 +360,246 @@ const AccountForm = ({ onSubmit, submitting, idPrefix }) => {
   );
 };
 
-const StudentDetail = ({
-  student,
-  onLinkAccount,
-  onUnlinkAccount,
-  linking,
-  isTeacher,
-}) => (
-  <div className="space-y-4">
-    <div className="flex flex-wrap gap-4 text-sm">
-      <p className="text-slate-600">
-        <span className="font-semibold text-slate-900">Class:</span>{" "}
-        {student.class
-          ? `${student.class.name}${student.class.section ? ` (Section ${student.class.section})` : ""}`
-          : "Not assigned"}
-      </p>
-      <p className="text-slate-600">
-        <span className="font-semibold text-slate-900">Teacher:</span>{" "}
-        {student.class?.teacher?.name || "Not assigned"}
-      </p>
-      <p className="text-slate-600">
-        <span className="font-semibold text-slate-900">Parent / guardian:</span>{" "}
-        {student.guardianName || "—"}
-      </p>
-      <p className="text-slate-600">
-        <span className="font-semibold text-slate-900">Phone:</span>{" "}
-        {student.phone || "—"}
-      </p>
-      <p className="text-slate-600">
-        <span className="font-semibold text-slate-900">Email:</span>{" "}
-        {student.email || "—"}
-      </p>
-      {!isTeacher && (
-        <p className="text-slate-600">
-          <span className="font-semibold text-slate-900">Total refunded:</span>{" "}
-          {formatNumber(student.totalRefunded)}
-        </p>
-      )}
-    </div>
+const StudentDetail = ({ student, isTeacher, onChanged }) => {
+  const toast = useToast();
+  const [linking, setLinking] = useState(false);
+  const [unlinkOpen, setUnlinkOpen] = useState(false);
+  const [unlinkBusy, setUnlinkBusy] = useState(false);
+  const [detail, setDetail] = useState(student);
 
-    {!isTeacher && (
-      <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          Portal login
-        </h3>
-        {student.account ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
-            <div>
-              <p className="text-xs font-medium text-slate-700">
-                Linked to {student.account.email}
-              </p>
-              <p className="text-[11px] text-slate-400">
-                The student can sign in and view dues, receipts and class info.
-              </p>
-            </div>
-            <button
-              onClick={() => onUnlinkAccount(student)}
-              className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
-            >
-              Unlink
-            </button>
-          </div>
-        ) : (
-          <>
-            <p className="text-xs text-slate-400">
-              Create a login so this student can use the portal.
-            </p>
-            <AccountForm
-              idPrefix={`student-${student.id}`}
-              onSubmit={(payload) => onLinkAccount(student, payload)}
-              submitting={linking}
-            />
-          </>
+  const handleLinkAccount = async (payload) => {
+    setLinking(true);
+    try {
+      const result = await api.post(`/students/${student.id}/account`, payload);
+      setDetail(result.student);
+      toast.success("Portal login created");
+      onChanged?.();
+    } catch (err) {
+      toast.error(err.message);
+      throw err;
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  const handleUnlink = async () => {
+    setUnlinkBusy(true);
+    try {
+      await api.delete(`/students/${student.id}/account`);
+      const fresh = await api.get(`/students/${student.id}`);
+      setDetail(fresh);
+      setUnlinkOpen(false);
+      toast.success("Portal login unlinked");
+      onChanged?.();
+    } catch (err) {
+      toast.error(err.message);
+      setUnlinkOpen(false);
+    } finally {
+      setUnlinkBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-4 text-sm">
+        <p className="text-slate-600">
+          <span className="font-semibold text-slate-900">Class:</span>{" "}
+          {detail.class
+            ? `${detail.class.name}${detail.class.section ? ` (Section ${detail.class.section})` : ""}`
+            : "Not assigned"}
+        </p>
+        <p className="text-slate-600">
+          <span className="font-semibold text-slate-900">Teacher:</span>{" "}
+          {detail.class?.teacher?.name || "Not assigned"}
+        </p>
+        <p className="text-slate-600">
+          <span className="font-semibold text-slate-900">Parent / guardian:</span>{" "}
+          {detail.guardianName || "—"}
+        </p>
+        <p className="text-slate-600">
+          <span className="font-semibold text-slate-900">Phone:</span>{" "}
+          {detail.phone || "—"}
+        </p>
+        <p className="text-slate-600">
+          <span className="font-semibold text-slate-900">Email:</span>{" "}
+          {detail.email || "—"}
+        </p>
+        {!isTeacher && (
+          <p className="text-slate-600">
+            <span className="font-semibold text-slate-900">Total refunded:</span>{" "}
+            {formatNumber(detail.totalRefunded)}
+          </p>
         )}
       </div>
-    )}
 
-    {!isTeacher && (
-      <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          Fee plans
-        </h3>
-        {student.feePlans.length === 0 ? (
-          <p className="text-sm text-slate-400">No fee plans.</p>
-        ) : (
-          <div className="space-y-3">
-            {student.feePlans.map((plan) => (
-              <div
-                key={plan.id}
-                className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+      {!isTeacher && (
+        <div>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Portal login
+          </h3>
+          {detail.account ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+              <div>
+                <p className="text-xs font-medium text-slate-700">
+                  Linked to {detail.account.email}
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  The student can sign in and view dues, receipts and class info.
+                </p>
+              </div>
+              <button
+                onClick={() => setUnlinkOpen(true)}
+                className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
               >
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                Unlink
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-slate-400">
+                Create a login so this student can use the portal.
+              </p>
+              <AccountForm
+                idPrefix={`student-${detail.id}`}
+                onSubmit={handleLinkAccount}
+                submitting={linking}
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      {!isTeacher && (
+        <div>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Fee plans
+          </h3>
+          {detail.feePlans.length === 0 ? (
+            <p className="text-sm text-slate-400">No fee plans.</p>
+          ) : (
+            <div className="space-y-3">
+              {detail.feePlans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {plan.feeType.name}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Total {formatNumber(plan.totalAmount)} · Paid{" "}
+                        {formatNumber(plan.paidAmount)} · Balance{" "}
+                        {formatNumber(plan.balance)}
+                      </p>
+                    </div>
+                    <span
+                      className={`rounded px-2 py-1 text-xs font-semibold ${statusClass(plan.status)}`}
+                    >
+                      {plan.status}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {plan.installments.map((installment) => (
+                      <InstallmentRow key={installment.id} installment={installment} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!isTeacher && (
+        <div>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Refunds
+          </h3>
+          {detail.refunds.length === 0 ? (
+            <p className="text-sm text-slate-400">No refunds.</p>
+          ) : (
+            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
+              {detail.refunds.map((refund) => (
+                <li
+                  key={refund.id}
+                  className="flex items-center justify-between px-3 py-2"
+                >
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">
-                      {plan.feeType.name}
+                    <p className="text-xs font-medium text-slate-700">
+                      {refund.reason || "Refund"}
                     </p>
-                    <p className="text-xs text-slate-500">
-                      Total {formatNumber(plan.totalAmount)} · Paid{" "}
-                      {formatNumber(plan.paidAmount)} · Balance{" "}
-                      {formatNumber(plan.balance)}
+                    <p className="text-[11px] text-slate-400">
+                      {formatDate(refund.refundedOn)}
                     </p>
                   </div>
-                  <span
-                    className={`rounded px-2 py-1 text-xs font-semibold ${statusClass(plan.status)}`}
-                  >
-                    {plan.status}
+                  <span className="text-sm font-semibold text-red-600">
+                    {formatNumber(refund.amount)}
                   </span>
-                </div>
-                <div className="space-y-2">
-                  {plan.installments.map((installment) => (
-                    <InstallmentRow key={installment.id} installment={installment} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    )}
-
-    {!isTeacher && (
-      <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          Refunds
-        </h3>
-        {student.refunds.length === 0 ? (
-          <p className="text-sm text-slate-400">No refunds.</p>
-        ) : (
-          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
-            {student.refunds.map((refund) => (
-              <li
-                key={refund.id}
-                className="flex items-center justify-between px-3 py-2"
-              >
-                <div>
-                  <p className="text-xs font-medium text-slate-700">
-                    {refund.reason || "Refund"}
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    {formatDate(refund.refundedOn)}
-                  </p>
-                </div>
-                <span className="text-sm font-semibold text-red-600">
-                  {formatNumber(refund.amount)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    )}
-  </div>
-);
-
-const StudentRow = ({
-  student,
-  onToggleDetail,
-  isOpen,
-  onEdit,
-  onDelete,
-  onLinkAccount,
-  onUnlinkAccount,
-  linking,
-  isTeacher,
-}) => (
-  <li className="border-b border-slate-100 last:border-0">
-    <div className="flex items-center justify-between px-4 py-3">
-      <button onClick={() => onToggleDetail(student)} className="flex-1 text-left">
-        <p className="text-sm font-medium text-slate-900">{student.name}</p>
-        <p className="text-xs text-slate-500">
-          {student.admissionNo}
-          {student.class ? (
-            <>
-              {" · "}
-              <span className="font-semibold text-slate-700">
-                {student.class.name}
-                {student.class.section ? ` (Section ${student.class.section})` : ""}
-              </span>
-            </>
-          ) : (
-            " · No class"
+                </li>
+              ))}
+            </ul>
           )}
-        </p>
-        <p className="text-xs text-slate-500">
-          {student.class?.teacher ? (
-            <>
-              <span className="font-semibold text-slate-700">
-                {student.class.teacher.name}
-              </span>
-              <span className="text-slate-400"> · Teacher</span>
-            </>
-          ) : (
-            <span className="text-amber-600">
-              {student.class ? "No teacher assigned" : "No class or teacher"}
-            </span>
-          )}
-        </p>
-      </button>
-      <div className="flex items-center gap-3">
-        <span
-          className={`rounded px-2 py-1 text-xs font-semibold ${statusClass(student.status)}`}
-        >
-          {student.status}
-        </span>
-        <button
-          onClick={() => onEdit(student)}
-          className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
-        >
-          Edit
-        </button>
-        <button
-          onClick={() => onToggleDetail(student)}
-          className="rounded-md px-2 py-1 text-xs font-semibold text-teal-600 hover:bg-teal-50"
-        >
-          {isOpen ? "Hide details" : "Details"}
-        </button>
-        {!isTeacher && (
-          <button
-            onClick={() => onDelete(student)}
-            className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
-          >
-            Delete
-          </button>
-        )}
-      </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={unlinkOpen}
+        title="Unlink portal login"
+        message={`${detail.name} will no longer be able to sign in to the student portal.`}
+        busy={unlinkBusy}
+        onConfirm={handleUnlink}
+        onCancel={() => setUnlinkOpen(false)}
+      />
     </div>
-    {isOpen && (
-      <div className="border-t border-slate-100 bg-slate-50 px-4 py-4">
-        <StudentDetail
-          student={student}
-          onLinkAccount={onLinkAccount}
-          onUnlinkAccount={onUnlinkAccount}
-          linking={linking}
-          isTeacher={isTeacher}
-        />
+  );
+};
+
+const StudentDetailLoader = ({ student, isTeacher, onChanged }) => {
+  const toast = useToast();
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    api
+      .get(`/students/${student.id}`)
+      .then((data) => {
+        if (!cancelled) {
+          setDetail(data);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          toast.error(err.message);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [student.id, toast]);
+
+  if (loading) {
+    return (
+      <div className="flex h-24 items-center justify-center">
+        <Spinner />
       </div>
-    )}
-  </li>
-);
+    );
+  }
+
+  if (!detail) {
+    return <p className="text-sm text-slate-400">Could not load student details.</p>;
+  }
+
+  return (
+    <StudentDetail student={detail} isTeacher={isTeacher} onChanged={onChanged} />
+  );
+};
 
 const StudentsPage = () => {
   const { user } = useAuth();
@@ -523,42 +607,35 @@ const StudentsPage = () => {
   const isTeacher = user?.role === "TEACHER";
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [feeTypes, setFeeTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [linking, setLinking] = useState(false);
-  const [openId, setOpenId] = useState(null);
-  const [detailMap, setDetailMap] = useState({});
+  const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState(emptyStudent);
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState(emptyStudent);
   const [deleting, setDeleting] = useState(null);
-  const [unlinking, setUnlinking] = useState(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
 
-  const fetchStudents = async (filter = statusFilter) => {
-    setLoading(true);
-    setError("");
-    try {
-      const path = filter ? `/students?status=${filter}` : "/students";
-      const data = await api.get(path);
-      setStudents(data);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
+  const fetchStudents = async () => {
+    const data = await api.get("/students");
+    setStudents(data);
   };
 
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([api.get("/students"), api.get("/classes")])
-      .then(([studentList, classList]) => {
+    Promise.all([
+      api.get("/students"),
+      api.get("/classes").catch(() => []),
+      api.get("/fees/types").catch(() => []),
+    ])
+      .then(([studentList, classList, feeTypeList]) => {
         if (!cancelled) {
           setStudents(studentList);
-          setClasses(classList);
+          setClasses(classList ?? []);
+          setFeeTypes(feeTypeList ?? []);
           setLoading(false);
         }
       })
@@ -574,25 +651,10 @@ const StudentsPage = () => {
     };
   }, []);
 
-  const handleStatusFilter = async (nextStatus) => {
-    setStatusFilter(nextStatus);
-    setOpenId(null);
-    setDetailMap({});
-    await fetchStudents(nextStatus);
-  };
-
-  const handleToggleDetail = async (student) => {
-    const nextOpen = openId === student.id ? null : student.id;
-    setOpenId(nextOpen);
-
-    if (nextOpen && !detailMap[student.id]) {
-      try {
-        const detail = await api.get(`/students/${student.id}`);
-        setDetailMap((current) => ({ ...current, [student.id]: detail }));
-      } catch (err) {
-        toast.error(err.message);
-      }
-    }
+  const openCreate = () => {
+    setDraft(emptyStudent);
+    setError("");
+    setCreating(true);
   };
 
   const handleCreate = async (event) => {
@@ -605,7 +667,7 @@ const StudentsPage = () => {
     setSubmitting(true);
     setError("");
     try {
-      await api.post("/students", {
+      const payload = {
         admissionNo: draft.admissionNo.trim(),
         name: draft.name.trim(),
         guardianName: draft.guardianName.trim() || null,
@@ -613,7 +675,18 @@ const StudentsPage = () => {
         email: draft.email.trim() || null,
         classId: draft.classId ? Number(draft.classId) : null,
         status: draft.status,
-      });
+      };
+
+      if (draft.feeTypeId) {
+        payload.feeTypeId = Number(draft.feeTypeId);
+        if (draft.feeAmount !== "") {
+          payload.feeAmount = Number(draft.feeAmount);
+        }
+        payload.installmentCount = Math.max(1, Number(draft.installmentCount) || 1);
+      }
+
+      await api.post("/students", payload);
+      setCreating(false);
       setDraft(emptyStudent);
       toast.success("Student created");
       await fetchStudents();
@@ -626,7 +699,7 @@ const StudentsPage = () => {
 
   const openEdit = async (student) => {
     try {
-      const detail = detailMap[student.id] ?? (await api.get(`/students/${student.id}`));
+      const detail = await api.get(`/students/${student.id}`);
       setEditing(detail);
       setEditValue({
         admissionNo: detail.admissionNo,
@@ -636,6 +709,9 @@ const StudentsPage = () => {
         email: detail.email ?? "",
         classId: detail.classId ? String(detail.classId) : "",
         status: detail.status,
+        feeTypeId: "",
+        feeAmount: "",
+        installmentCount: "1",
       });
     } catch (err) {
       toast.error(err.message);
@@ -651,7 +727,7 @@ const StudentsPage = () => {
 
     setSubmitting(true);
     try {
-      const detail = await api.patch(`/students/${editing.id}`, {
+      await api.patch(`/students/${editing.id}`, {
         name: editValue.name.trim(),
         guardianName: editValue.guardianName.trim() || null,
         phone: editValue.phone.trim() || null,
@@ -659,7 +735,6 @@ const StudentsPage = () => {
         classId: editValue.classId ? Number(editValue.classId) : null,
         status: editValue.status,
       });
-      setDetailMap((current) => ({ ...current, [editing.id]: detail }));
       setEditing(null);
       toast.success("Student updated");
       await fetchStudents();
@@ -675,11 +750,6 @@ const StudentsPage = () => {
     setConfirmBusy(true);
     try {
       await api.delete(`/students/${deleting.id}`);
-      setDetailMap((current) => {
-        const next = { ...current };
-        delete next[deleting.id];
-        return next;
-      });
       setDeleting(null);
       toast.success("Student deleted");
       await fetchStudents();
@@ -691,38 +761,68 @@ const StudentsPage = () => {
     }
   };
 
-  const handleLinkAccount = async (student, payload) => {
-    setLinking(true);
-    try {
-      const result = await api.post(`/students/${student.id}/account`, payload);
-      setDetailMap((current) => ({ ...current, [student.id]: result.student }));
-      toast.success("Portal login created");
-      await fetchStudents();
-    } catch (err) {
-      toast.error(err.message);
-      throw err;
-    } finally {
-      setLinking(false);
-    }
-  };
-
-  const handleUnlinkAccount = async () => {
-    if (!unlinking) return;
-    setConfirmBusy(true);
-    try {
-      await api.delete(`/students/${unlinking.id}/account`);
-      const detail = await api.get(`/students/${unlinking.id}`);
-      setDetailMap((current) => ({ ...current, [unlinking.id]: detail }));
-      setUnlinking(null);
-      toast.success("Portal login unlinked");
-      await fetchStudents();
-    } catch (err) {
-      toast.error(err.message);
-      setUnlinking(null);
-    } finally {
-      setConfirmBusy(false);
-    }
-  };
+  const columns = [
+    {
+      key: "name",
+      header: "Student",
+      sortable: true,
+      render: (student) => (
+        <div>
+          <p className="font-medium text-slate-900">{student.name}</p>
+          <p className="text-xs text-slate-500">{student.admissionNo}</p>
+        </div>
+      ),
+    },
+    {
+      key: "class",
+      header: "Class & teacher",
+      sortable: true,
+      sortValue: (student) => student.class?.name ?? "",
+      render: (student) => (
+        <div>
+          <p className="text-slate-700">
+            {student.class
+              ? `${student.class.name}${student.class.section ? ` (Section ${student.class.section})` : ""}`
+              : "No class"}
+          </p>
+          <p className="text-xs text-slate-500">
+            {student.class?.teacher ? (
+              student.class.teacher.name
+            ) : (
+              <span className="text-amber-600">
+                {student.class ? "No teacher assigned" : "No class or teacher"}
+              </span>
+            )}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "guardianName",
+      header: "Guardian",
+      sortable: true,
+      render: (student) => (
+        <div>
+          <p className="text-slate-700">{student.guardianName || "—"}</p>
+          {student.phone ? (
+            <p className="text-xs text-slate-500">{student.phone}</p>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      sortable: true,
+      render: (student) => (
+        <span
+          className={`rounded px-2 py-1 text-xs font-semibold ${statusClass(student.status)}`}
+        >
+          {student.status}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div>
@@ -731,102 +831,115 @@ const StudentsPage = () => {
         description="Manage your students and their fee plans."
       />
 
-      <form
-        onSubmit={handleCreate}
-        className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-      >
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Add a new student</h2>
-        <StudentFields
-          value={draft}
-          onChange={setDraft}
-          classes={classes}
-          idPrefix="student-create"
-        />
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-4 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
-        >
-          {submitting ? "Saving..." : "Add student"}
-        </button>
-      </form>
-
-      {error && (
+      {error && !creating && (
         <div className="mb-4">
           <Alert type="error" message={error} />
         </div>
       )}
 
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-slate-900">
-          All students
-          {!loading && (
-            <span className="ml-2 text-xs font-normal text-slate-400">
-              {students.length} shown
-            </span>
-          )}
-        </h2>
-        <div className="w-48">
-          <label
-            htmlFor="student-status-filter"
-            className="mb-1 block text-xs font-semibold text-slate-600"
-          >
-            Filter by status
-          </label>
-          <select
-            id="student-status-filter"
-            value={statusFilter}
-            onChange={(event) => handleStatusFilter(event.target.value)}
-            className={inputClass}
-          >
-            <option value="">All statuses</option>
-            {STATUSES.map((statusOption) => (
-              <option key={statusOption} value={statusOption}>
-                {statusOption}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+      <DataTable
+        title="All students"
+        count={students.length}
+        loading={loading}
+        rows={students}
+        columns={columns}
+        searchPlaceholder="Search by name, admission no, guardian..."
+        searchValue={(student) =>
+          [
+            student.name,
+            student.admissionNo,
+            student.guardianName,
+            student.phone,
+            student.email,
+            student.class?.name,
+            student.class?.teacher?.name,
+          ]
+            .filter(Boolean)
+            .join(" ")
+        }
+        filters={[
+          {
+            key: "status",
+            label: "Filter by status",
+            options: [
+              { value: "", label: "All statuses" },
+              ...STATUSES.map((status) => ({ value: status, label: status })),
+            ],
+            value: (student) => student.status,
+          },
+        ]}
+        defaultSort={{ key: "createdAt", direction: "desc" }}
+        addButton={{ label: "Add student", onClick: openCreate }}
+        emptyMessage="No students found."
+        renderDetail={(student) => (
+          <StudentDetailLoader
+            student={student}
+            isTeacher={isTeacher}
+            onChanged={fetchStudents}
+          />
+        )}
+        rowActions={(student) => {
+          const actions = [
+            { label: "Edit", icon: "edit", onClick: () => openEdit(student) },
+          ];
+          if (!isTeacher) {
+            actions.push({
+              label: "Delete",
+              icon: "trash",
+              tone: "danger",
+              onClick: () => setDeleting(student),
+            });
+          }
+          return actions;
+        }}
+      />
 
-      {loading ? (
-        <div className="flex h-48 items-center justify-center">
-          <Spinner />
-        </div>
-      ) : students.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <p className="text-sm text-slate-400">
-            {statusFilter
-              ? `No ${statusFilter.toLowerCase()} students found.`
-              : "No students found."}
-          </p>
-        </div>
-      ) : (
-        <ul className="rounded-xl border border-slate-200 bg-white shadow-sm">
-          {students.map((student) => (
-            <StudentRow
-              key={student.id}
-              student={detailMap[student.id] ?? student}
-              isOpen={openId === student.id}
-              onToggleDetail={handleToggleDetail}
-              onEdit={openEdit}
-              onDelete={setDeleting}
-              onLinkAccount={handleLinkAccount}
-              onUnlinkAccount={setUnlinking}
-              linking={linking}
-              isTeacher={isTeacher}
-            />
-          ))}
-        </ul>
-      )}
+      <Modal
+        open={creating}
+        onClose={() => setCreating(false)}
+        title="Add a new student"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setCreating(false)}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="student-create-form"
+              disabled={submitting}
+              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+            >
+              {submitting ? "Saving..." : "Add student"}
+            </button>
+          </>
+        }
+      >
+        <form id="student-create-form" onSubmit={handleCreate} className="space-y-4">
+          {error && <Alert type="error" message={error} />}
+          <StudentFields
+            value={draft}
+            onChange={setDraft}
+            classes={classes}
+            idPrefix="student-create"
+          />
+          <FeePlanFields
+            value={draft}
+            onChange={setDraft}
+            feeTypes={feeTypes}
+            idPrefix="student-create"
+          />
+        </form>
+      </Modal>
 
       <Modal
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
         title="Edit student"
-        description={
-          editing ? `${editing.admissionNo} · ${editing.name}` : undefined
-        }
+        description={editing ? `${editing.admissionNo} · ${editing.name}` : undefined}
         footer={
           <>
             <button
@@ -869,19 +982,6 @@ const StudentsPage = () => {
         busy={confirmBusy}
         onConfirm={handleDelete}
         onCancel={() => setDeleting(null)}
-      />
-
-      <ConfirmDialog
-        open={Boolean(unlinking)}
-        title="Unlink portal login"
-        message={
-          unlinking
-            ? `${unlinking.name} will no longer be able to sign in to the student portal.`
-            : ""
-        }
-        busy={confirmBusy}
-        onConfirm={handleUnlinkAccount}
-        onCancel={() => setUnlinking(null)}
       />
     </div>
   );

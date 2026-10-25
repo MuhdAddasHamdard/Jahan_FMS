@@ -7,21 +7,15 @@ const ICONS = {
   info: "M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z",
 };
 
-const TONES = {
-  success: "border-teal-200",
-  error: "border-red-200",
-  info: "border-slate-200",
-};
-
 const ICON_TONES = {
-  success: "bg-teal-50 text-teal-600",
-  error: "bg-red-50 text-red-600",
-  info: "bg-slate-100 text-slate-600",
+  success: "soft-brand",
+  error: "soft-danger",
+  info: "soft-neutral",
 };
 
 const ToastItem = ({ toast, onDismiss }) => (
   <div
-    className={`pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border bg-white p-4 shadow-lg ${TONES[toast.type] ?? TONES.info}`}
+    className="glass-strong animate-slide-in-right pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl p-4 shadow-[var(--shadow-float)]"
     role="status"
   >
     <span
@@ -33,15 +27,15 @@ const ToastItem = ({ toast, onDismiss }) => (
     </span>
     <div className="min-w-0 flex-1">
       {toast.title && (
-        <p className="text-sm font-semibold text-slate-900">{toast.title}</p>
+        <p className="text-sm font-semibold text-content">{toast.title}</p>
       )}
-      <p className="text-sm text-slate-600">{toast.message}</p>
+      <p className="text-sm text-muted">{toast.message}</p>
     </div>
     <button
       type="button"
       onClick={onDismiss}
       aria-label="Dismiss"
-      className="rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+      className="rounded-md p-1 text-faint transition hover:bg-surface-2 hover:text-content"
     >
       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M18.3 5.71a1 1 0 00-1.41 0L12 10.59 7.11 5.7A1 1 0 105.7 7.11L10.59 12 5.7 16.89a1 1 0 101.41 1.41L12 13.41l4.89 4.89a1 1 0 001.41-1.41L13.41 12l4.89-4.89a1 1 0 000-1.4z" />

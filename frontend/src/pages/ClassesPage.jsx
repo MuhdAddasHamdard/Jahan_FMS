@@ -6,6 +6,7 @@ import Spinner from "../components/Spinner";
 import Alert from "../components/Alert";
 import Modal from "../components/Modal";
 import ConfirmDialog from "../components/ConfirmDialog";
+import DataTable from "../components/DataTable";
 import { FormField, inputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
 import { formatNumber } from "../utils/format";
@@ -199,126 +200,14 @@ const InlineForm = ({ onSubmit, submitLabel, children }) => {
   );
 };
 
-const ClassDetail = ({
-  classRecord,
-  onAddSchedule,
-  onAddMaterial,
-  onDeleteSchedule,
-  onDeleteMaterial,
-  onEditSchedule,
-  onEditMaterial,
-}) => (
-  <div className="space-y-5">
-    <div className="flex flex-wrap gap-x-6 gap-y-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">
-      <span className="text-slate-500">
-        Class:{" "}
-        <span className="font-semibold text-slate-900">
-          {classRecord.name}
-          {classRecord.section ? ` · Section ${classRecord.section}` : ""}
-        </span>
-      </span>
-      <span className="text-slate-500">
-        Teacher:{" "}
-        <span className="font-semibold text-slate-900">
-          {classRecord.teacher ? classRecord.teacher.name : "Not assigned"}
-        </span>
-      </span>
-    </div>
-    <div>
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-        Schedule
-      </h3>
-      {classRecord.schedules?.length === 0 ? (
-        <p className="text-sm text-slate-400">No schedule yet.</p>
-      ) : (
-        <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
-          {classRecord.schedules.map((schedule) => (
-            <li key={schedule.id} className="flex items-center justify-between px-3 py-2">
-              <div>
-                <p className="text-xs font-medium text-slate-700">
-                  {DAY_NAMES[schedule.dayOfWeek] ?? schedule.dayOfWeek}
-                </p>
-                <p className="text-[11px] text-slate-400">
-                  {schedule.startTime} - {schedule.endTime}
-                  {schedule.room ? ` · ${schedule.room}` : ""}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => onEditSchedule(schedule)}
-                  className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => onDeleteSchedule(schedule)}
-                  className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="mt-3">
-        <ScheduleFormInline classRecord={classRecord} onAddSchedule={onAddSchedule} />
-      </div>
-    </div>
-
-    <div>
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-        Course materials
-      </h3>
-      {classRecord.materials?.length === 0 ? (
-        <p className="text-sm text-slate-400">No materials yet.</p>
-      ) : (
-        <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
-          {classRecord.materials.map((material) => (
-            <li key={material.id} className="flex items-center justify-between px-3 py-2">
-              <div>
-                <p className="text-xs font-medium text-slate-700">{material.title}</p>
-                {(material.description || material.link) && (
-                  <p className="text-[11px] text-slate-400">
-                    {material.description}
-                    {material.link ? ` · ${material.link}` : ""}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => onEditMaterial(material)}
-                  className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => onDeleteMaterial(material)}
-                  className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="mt-3">
-        <MaterialFormInline classRecord={classRecord} onAddMaterial={onAddMaterial} />
-      </div>
-    </div>
-  </div>
-);
-
-const MaterialFormInline = ({ classRecord, onAddMaterial }) => {
+const MaterialFormInline = ({ classId, onAddMaterial }) => {
   const [value, setValue] = useState({ title: "", description: "", link: "" });
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit = async () => {
     if (!value.title.trim()) {
       throw new Error("Title is required");
     }
-    await onAddMaterial(classRecord.id, {
+    await onAddMaterial(classId, {
       title: value.title.trim(),
       description: value.description.trim() || null,
       link: value.link.trim() || null,
@@ -328,12 +217,12 @@ const MaterialFormInline = ({ classRecord, onAddMaterial }) => {
 
   return (
     <InlineForm onSubmit={handleSubmit} submitLabel="Add material">
-      <MaterialFields value={value} onChange={setValue} idPrefix={`material-new-${classRecord.id}`} />
+      <MaterialFields value={value} onChange={setValue} idPrefix={`material-new-${classId}`} />
     </InlineForm>
   );
 };
 
-const ScheduleFormInline = ({ classRecord, onAddSchedule }) => {
+const ScheduleFormInline = ({ classId, onAddSchedule }) => {
   const [value, setValue] = useState({
     dayOfWeek: "1",
     startTime: "08:00",
@@ -345,7 +234,7 @@ const ScheduleFormInline = ({ classRecord, onAddSchedule }) => {
     if (value.startTime >= value.endTime) {
       throw new Error("End time must be after start time");
     }
-    await onAddSchedule(classRecord.id, {
+    await onAddSchedule(classId, {
       dayOfWeek: Number(value.dayOfWeek),
       startTime: value.startTime,
       endTime: value.endTime,
@@ -355,91 +244,371 @@ const ScheduleFormInline = ({ classRecord, onAddSchedule }) => {
 
   return (
     <InlineForm onSubmit={handleSubmit} submitLabel="Add schedule">
-      <ScheduleFields value={value} onChange={setValue} idPrefix={`schedule-new-${classRecord.id}`} />
+      <ScheduleFields value={value} onChange={setValue} idPrefix={`schedule-new-${classId}`} />
     </InlineForm>
   );
 };
 
-const ClassRow = ({
-  classRecord,
-  onDelete,
-  canDelete,
-  onToggle,
-  isOpen,
-  onAddSchedule,
-  onAddMaterial,
-  onDeleteSchedule,
-  onDeleteMaterial,
-  onEditClass,
-  onEditSchedule,
-  onEditMaterial,
-}) => (
-  <li className="border-b border-slate-100 last:border-0">
-    <div className="flex items-center justify-between px-4 py-3">
-      <div>
-        <p className="text-sm font-medium text-slate-900">
-          {classRecord.name}
-          {classRecord.section ? (
-            <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600">
-              Section {classRecord.section}
-            </span>
-          ) : null}
-        </p>
-        <p className="text-xs text-slate-500">
-          {classRecord.teacher ? (
-            <>
-              <span className="font-semibold text-slate-600">
-                {classRecord.teacher.name}
-              </span>
-              <span className="text-slate-400"> · Teacher</span>
-            </>
-          ) : (
-            <span className="text-amber-600">No teacher assigned</span>
-          )}
-        </p>
+const ClassDetailPanel = ({ classRecord }) => {
+  const toast = useToast();
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [editingSchedule, setEditingSchedule] = useState(null);
+  const [scheduleValue, setScheduleValue] = useState({
+    dayOfWeek: "0",
+    startTime: "08:00",
+    endTime: "09:00",
+    room: "",
+  });
+  const [editingMaterial, setEditingMaterial] = useState(null);
+  const [materialValue, setMaterialValue] = useState({
+    title: "",
+    description: "",
+    link: "",
+  });
+  const [deleting, setDeleting] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const refresh = async () => {
+    const data = await api.get(`/classes/${classRecord.id}`);
+    setDetail(data);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    api
+      .get(`/classes/${classRecord.id}`)
+      .then((data) => {
+        if (!cancelled) {
+          setDetail(data);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          toast.error(err.message);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [classRecord.id, toast]);
+
+  const addSchedule = async (classId, payload) => {
+    try {
+      await api.post(`/classes/${classId}/schedules`, payload);
+      toast.success("Schedule added");
+      await refresh();
+    } catch (err) {
+      toast.error(err.message);
+      throw err;
+    }
+  };
+
+  const addMaterial = async (classId, payload) => {
+    try {
+      await api.post(`/classes/${classId}/materials`, payload);
+      toast.success("Material added");
+      await refresh();
+    } catch (err) {
+      toast.error(err.message);
+      throw err;
+    }
+  };
+
+  const openEditSchedule = (schedule) => {
+    setEditingSchedule(schedule);
+    setScheduleValue({
+      dayOfWeek: String(schedule.dayOfWeek),
+      startTime: schedule.startTime.slice(0, 5),
+      endTime: schedule.endTime.slice(0, 5),
+      room: schedule.room ?? "",
+    });
+  };
+
+  const handleUpdateSchedule = async (event) => {
+    event.preventDefault();
+    if (scheduleValue.startTime >= scheduleValue.endTime) {
+      toast.error("End time must be after start time");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      await api.patch(`/classes/${detail.id}/schedules/${editingSchedule.id}`, {
+        dayOfWeek: Number(scheduleValue.dayOfWeek),
+        startTime: scheduleValue.startTime,
+        endTime: scheduleValue.endTime,
+        room: scheduleValue.room.trim() || null,
+      });
+      setEditingSchedule(null);
+      toast.success("Schedule updated");
+      await refresh();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openEditMaterial = (material) => {
+    setEditingMaterial(material);
+    setMaterialValue({
+      title: material.title,
+      description: material.description ?? "",
+      link: material.link ?? "",
+    });
+  };
+
+  const handleUpdateMaterial = async (event) => {
+    event.preventDefault();
+    if (!materialValue.title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      await api.patch(`/classes/${detail.id}/materials/${editingMaterial.id}`, {
+        title: materialValue.title.trim(),
+        description: materialValue.description.trim() || null,
+        link: materialValue.link.trim() || null,
+      });
+      setEditingMaterial(null);
+      toast.success("Material updated");
+      await refresh();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleting) return;
+    setBusy(true);
+    try {
+      if (deleting.type === "schedule") {
+        await api.delete(`/classes/${detail.id}/schedules/${deleting.record.id}`);
+      } else {
+        await api.delete(`/classes/${detail.id}/materials/${deleting.record.id}`);
+      }
+      toast.success("Deleted");
+      setDeleting(null);
+      await refresh();
+    } catch (err) {
+      toast.error(err.message);
+      setDeleting(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-24 items-center justify-center">
+        <Spinner />
       </div>
-      <div className="flex items-center gap-3">
-        <span className="text-xs text-slate-400">
-          {formatNumber(classRecord.studentCount)} student
-          {classRecord.studentCount === 1 ? "" : "s"}
+    );
+  }
+
+  if (!detail) {
+    return <p className="text-sm text-slate-400">Could not load class details.</p>;
+  }
+
+  const deleteTitle =
+    deleting?.type === "schedule" ? "Delete schedule" : "Delete material";
+  const deleteMessage =
+    deleting?.type === "schedule"
+      ? `This ${DAY_NAMES[deleting.record.dayOfWeek] ?? ""} ${deleting.record.startTime} - ${deleting.record.endTime} entry will be removed.`
+      : deleting
+        ? `"${deleting.record.title}" will be removed for students in this class.`
+        : "";
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap gap-x-6 gap-y-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">
+        <span className="text-slate-500">
+          Class:{" "}
+          <span className="font-semibold text-slate-900">
+            {detail.name}
+            {detail.section ? ` · Section ${detail.section}` : ""}
+          </span>
         </span>
-        <button
-          onClick={() => onEditClass(classRecord)}
-          className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
-        >
-          Edit
-        </button>
-        <button
-          onClick={() => onToggle(classRecord)}
-          className="rounded-md px-2 py-1 text-xs font-semibold text-teal-600 hover:bg-teal-50"
-        >
-          {isOpen ? "Hide details" : "Details"}
-        </button>
-        {canDelete && (
-          <button
-            onClick={() => onDelete(classRecord)}
-            className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
-          >
-            Delete
-          </button>
+        <span className="text-slate-500">
+          Teacher:{" "}
+          <span className="font-semibold text-slate-900">
+            {detail.teacher ? detail.teacher.name : "Not assigned"}
+          </span>
+        </span>
+      </div>
+
+      <div>
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+          Schedule
+        </h3>
+        {detail.schedules?.length === 0 ? (
+          <p className="text-sm text-slate-400">No schedule yet.</p>
+        ) : (
+          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
+            {detail.schedules.map((schedule) => (
+              <li key={schedule.id} className="flex items-center justify-between px-3 py-2">
+                <div>
+                  <p className="text-xs font-medium text-slate-700">
+                    {DAY_NAMES[schedule.dayOfWeek] ?? schedule.dayOfWeek}
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    {schedule.startTime} - {schedule.endTime}
+                    {schedule.room ? ` · ${schedule.room}` : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openEditSchedule(schedule)}
+                    className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setDeleting({ type: "schedule", record: schedule })}
+                    className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
+        <div className="mt-3">
+          <ScheduleFormInline classId={detail.id} onAddSchedule={addSchedule} />
+        </div>
       </div>
+
+      <div>
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+          Course materials
+        </h3>
+        {detail.materials?.length === 0 ? (
+          <p className="text-sm text-slate-400">No materials yet.</p>
+        ) : (
+          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
+            {detail.materials.map((material) => (
+              <li key={material.id} className="flex items-center justify-between px-3 py-2">
+                <div>
+                  <p className="text-xs font-medium text-slate-700">{material.title}</p>
+                  {(material.description || material.link) && (
+                    <p className="text-[11px] text-slate-400">
+                      {material.description}
+                      {material.link ? ` · ${material.link}` : ""}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openEditMaterial(material)}
+                    className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setDeleting({ type: "material", record: material })}
+                    className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-3">
+          <MaterialFormInline classId={detail.id} onAddMaterial={addMaterial} />
+        </div>
+      </div>
+
+      <Modal
+        open={Boolean(editingSchedule)}
+        onClose={() => setEditingSchedule(null)}
+        title="Edit schedule"
+        description={editingSchedule ? DAY_NAMES[editingSchedule.dayOfWeek] : undefined}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setEditingSchedule(null)}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="schedule-edit-form"
+              disabled={busy}
+              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+            >
+              {busy ? "Saving..." : "Save changes"}
+            </button>
+          </>
+        }
+      >
+        <form id="schedule-edit-form" onSubmit={handleUpdateSchedule}>
+          <ScheduleFields
+            value={scheduleValue}
+            onChange={setScheduleValue}
+            idPrefix="schedule-edit"
+          />
+        </form>
+      </Modal>
+
+      <Modal
+        open={Boolean(editingMaterial)}
+        onClose={() => setEditingMaterial(null)}
+        title="Edit material"
+        description={editingMaterial ? editingMaterial.title : undefined}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setEditingMaterial(null)}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="material-edit-form"
+              disabled={busy}
+              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+            >
+              {busy ? "Saving..." : "Save changes"}
+            </button>
+          </>
+        }
+      >
+        <form id="material-edit-form" onSubmit={handleUpdateMaterial}>
+          <MaterialFields
+            value={materialValue}
+            onChange={setMaterialValue}
+            idPrefix="material-edit"
+          />
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title={deleteTitle}
+        message={deleteMessage}
+        busy={busy}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleting(null)}
+      />
     </div>
-    {isOpen && (
-      <div className="border-t border-slate-100 bg-slate-50 px-4 py-4">
-        <ClassDetail
-          classRecord={classRecord}
-          onAddSchedule={onAddSchedule}
-          onAddMaterial={onAddMaterial}
-          onDeleteSchedule={onDeleteSchedule}
-          onDeleteMaterial={onDeleteMaterial}
-          onEditSchedule={onEditSchedule}
-          onEditMaterial={onEditMaterial}
-        />
-      </div>
-    )}
-  </li>
-);
+  );
+};
 
 const ClassesPage = () => {
   const { isAdmin, isFinance } = useAuth();
@@ -451,35 +620,16 @@ const ClassesPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [openId, setOpenId] = useState(null);
-  const [detailMap, setDetailMap] = useState({});
+  const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState(emptyClass);
   const [editingClass, setEditingClass] = useState(null);
   const [editClassValue, setEditClassValue] = useState(emptyClass);
-  const [editingSchedule, setEditingSchedule] = useState(null);
-  const [editScheduleValue, setEditScheduleValue] = useState({
-    dayOfWeek: "0",
-    startTime: "08:00",
-    endTime: "09:00",
-    room: "",
-  });
-  const [editingMaterial, setEditingMaterial] = useState(null);
-  const [editMaterialValue, setEditMaterialValue] = useState({
-    title: "",
-    description: "",
-    link: "",
-  });
   const [deleting, setDeleting] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
 
   const refreshClasses = async () => {
     const data = await api.get("/classes");
     setClassList(data);
-  };
-
-  const refreshDetail = async (classId) => {
-    const detail = await api.get(`/classes/${classId}`);
-    setDetailMap((current) => ({ ...current, [classId]: detail }));
   };
 
   useEffect(() => {
@@ -510,13 +660,18 @@ const ClassesPage = () => {
     };
   }, [canAssignTeacher]);
 
+  const openCreate = () => {
+    setDraft(emptyClass);
+    setError("");
+    setCreating(true);
+  };
+
   const handleCreate = async (event) => {
     event.preventDefault();
     if (!draft.name.trim()) {
       setError("Class name is required");
       return;
     }
-
     if (canAssignTeacher && !draft.teacherId) {
       setError("Choose a teacher for the class");
       return;
@@ -530,6 +685,7 @@ const ClassesPage = () => {
         section: draft.section.trim() || null,
         teacherId: draft.teacherId ? Number(draft.teacherId) : null,
       });
+      setCreating(false);
       setDraft(emptyClass);
       toast.success("Class created");
       await refreshClasses();
@@ -568,118 +724,6 @@ const ClassesPage = () => {
       setEditingClass(null);
       toast.success("Class updated");
       await refreshClasses();
-      if (openId === editingClass.id) {
-        await refreshDetail(editingClass.id);
-      }
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleToggle = async (classRecord) => {
-    const nextOpen = openId === classRecord.id ? null : classRecord.id;
-    setOpenId(nextOpen);
-
-    if (nextOpen && !detailMap[classRecord.id]) {
-      try {
-        await refreshDetail(classRecord.id);
-      } catch (err) {
-        toast.error(err.message);
-      }
-    }
-  };
-
-  const addSchedule = async (classId, payload) => {
-    try {
-      await api.post(`/classes/${classId}/schedules`, payload);
-      toast.success("Schedule added");
-      await refreshDetail(classId);
-    } catch (err) {
-      toast.error(err.message);
-      throw err;
-    }
-  };
-
-  const addMaterial = async (classId, payload) => {
-    try {
-      await api.post(`/classes/${classId}/materials`, payload);
-      toast.success("Material added");
-      await refreshDetail(classId);
-    } catch (err) {
-      toast.error(err.message);
-      throw err;
-    }
-  };
-
-  const openEditSchedule = (schedule) => {
-    setEditingSchedule({ schedule, classId: openId });
-    setEditScheduleValue({
-      dayOfWeek: String(schedule.dayOfWeek),
-      startTime: schedule.startTime.slice(0, 5),
-      endTime: schedule.endTime.slice(0, 5),
-      room: schedule.room ?? "",
-    });
-  };
-
-  const handleUpdateSchedule = async (event) => {
-    event.preventDefault();
-    if (editScheduleValue.startTime >= editScheduleValue.endTime) {
-      toast.error("End time must be after start time");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      await api.patch(
-        `/classes/${editingSchedule.classId}/schedules/${editingSchedule.schedule.id}`,
-        {
-          dayOfWeek: Number(editScheduleValue.dayOfWeek),
-          startTime: editScheduleValue.startTime,
-          endTime: editScheduleValue.endTime,
-          room: editScheduleValue.room.trim() || null,
-        },
-      );
-      setEditingSchedule(null);
-      toast.success("Schedule updated");
-      await refreshDetail(editingSchedule.classId);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const openEditMaterial = (material) => {
-    setEditingMaterial({ material, classId: openId });
-    setEditMaterialValue({
-      title: material.title,
-      description: material.description ?? "",
-      link: material.link ?? "",
-    });
-  };
-
-  const handleUpdateMaterial = async (event) => {
-    event.preventDefault();
-    if (!editMaterialValue.title.trim()) {
-      toast.error("Title is required");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      await api.patch(
-        `/classes/${editingMaterial.classId}/materials/${editingMaterial.material.id}`,
-        {
-          title: editMaterialValue.title.trim(),
-          description: editMaterialValue.description.trim() || null,
-          link: editMaterialValue.link.trim() || null,
-        },
-      );
-      setEditingMaterial(null);
-      toast.success("Material updated");
-      await refreshDetail(editingMaterial.classId);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -690,29 +734,11 @@ const ClassesPage = () => {
   const handleDelete = async () => {
     if (!deleting) return;
     setDeleteBusy(true);
-
     try {
-      if (deleting.type === "class") {
-        await api.delete(`/classes/${deleting.record.id}`);
-        setDetailMap((current) => {
-          const next = { ...current };
-          delete next[deleting.record.id];
-          return next;
-        });
-        await refreshClasses();
-      } else if (deleting.type === "schedule") {
-        await api.delete(
-          `/classes/${deleting.classId}/schedules/${deleting.record.id}`,
-        );
-        await refreshDetail(deleting.classId);
-      } else {
-        await api.delete(
-          `/classes/${deleting.classId}/materials/${deleting.record.id}`,
-        );
-        await refreshDetail(deleting.classId);
-      }
-      toast.success("Deleted");
+      await api.delete(`/classes/${deleting.id}`);
+      toast.success("Class deleted");
       setDeleting(null);
+      await refreshClasses();
     } catch (err) {
       toast.error(err.message);
       setDeleting(null);
@@ -721,21 +747,48 @@ const ClassesPage = () => {
     }
   };
 
-  const deleteTitle =
-    deleting?.type === "class"
-      ? "Delete class"
-      : deleting?.type === "schedule"
-        ? "Delete schedule"
-        : "Delete material";
-
-  const deleteMessage =
-    deleting?.type === "class"
-      ? `"${deleting.record.name}" will be removed. Students are kept but will have no class.`
-      : deleting?.type === "schedule"
-        ? `This ${DAY_NAMES[deleting.record.dayOfWeek] ?? ""} ${deleting.record.startTime} - ${deleting.record.endTime} entry will be removed.`
-        : deleting
-          ? `"${deleting.record.title}" will be removed for students in this class.`
-          : "";
+  const columns = [
+    {
+      key: "name",
+      header: "Class",
+      sortable: true,
+      render: (classRecord) => (
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-slate-900">{classRecord.name}</span>
+          {classRecord.section ? (
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600">
+              Section {classRecord.section}
+            </span>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      key: "teacher",
+      header: "Teacher",
+      sortable: true,
+      sortValue: (classRecord) => classRecord.teacher?.name ?? "",
+      render: (classRecord) =>
+        classRecord.teacher ? (
+          <span className="text-slate-700">{classRecord.teacher.name}</span>
+        ) : (
+          <span className="text-amber-600">No teacher assigned</span>
+        ),
+    },
+    {
+      key: "studentCount",
+      header: "Students",
+      align: "right",
+      sortable: true,
+      sortValue: (classRecord) => classRecord.studentCount ?? 0,
+      render: (classRecord) => (
+        <span className="text-slate-700">
+          {formatNumber(classRecord.studentCount)} student
+          {classRecord.studentCount === 1 ? "" : "s"}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div>
@@ -744,78 +797,88 @@ const ClassesPage = () => {
         description="Manage classes, assigned teachers, schedules and course materials."
       />
 
-      <form
-        onSubmit={handleCreate}
-        className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-      >
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Add a new class</h2>
-        {canAssignTeacher && teachers.length === 0 && (
-          <div className="mb-3">
-            <Alert
-              type="info"
-              message="No teachers available yet. Add a teacher under Staff & Salaries or User management, then create the class."
-            />
-          </div>
-        )}
-        <ClassFields
-          value={draft}
-          onChange={setDraft}
-          teachers={teachers}
-          showTeacher={canAssignTeacher}
-          teacherRequired={canAssignTeacher}
-          idPrefix="class-create"
-        />
-        <button
-          type="submit"
-          disabled={submitting || (canAssignTeacher && !draft.teacherId)}
-          className="mt-4 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {submitting ? "Saving..." : "Add class"}
-        </button>
-      </form>
-
-      {error && (
+      {error && !creating && (
         <div className="mb-4">
           <Alert type="error" message={error} />
         </div>
       )}
 
-      {loading ? (
-        <div className="flex h-48 items-center justify-center">
-          <Spinner />
-        </div>
-      ) : classList.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <p className="text-sm text-slate-400">No classes yet.</p>
-        </div>
-      ) : (
-        <ul className="rounded-xl border border-slate-200 bg-white shadow-sm">
-          {classList.map((classRecord) => {
-            const detail = detailMap[classRecord.id] ?? classRecord;
-            return (
-              <ClassRow
-                key={classRecord.id}
-                classRecord={detail}
-                isOpen={openId === classRecord.id}
-                onToggle={handleToggle}
-                onEditClass={openEditClass}
-                onDelete={(record) => setDeleting({ type: "class", record })}
-                canDelete={canDeleteClass}
-                onAddSchedule={addSchedule}
-                onAddMaterial={addMaterial}
-                onDeleteSchedule={(record) =>
-                  setDeleting({ type: "schedule", record, classId: openId })
-                }
-                onDeleteMaterial={(record) =>
-                  setDeleting({ type: "material", record, classId: openId })
-                }
-                onEditSchedule={openEditSchedule}
-                onEditMaterial={openEditMaterial}
-              />
-            );
-          })}
-        </ul>
-      )}
+      <DataTable
+        title="All classes"
+        count={classList.length}
+        loading={loading}
+        rows={classList}
+        columns={columns}
+        searchPlaceholder="Search classes..."
+        searchValue={(classRecord) =>
+          [classRecord.name, classRecord.section, classRecord.teacher?.name]
+            .filter(Boolean)
+            .join(" ")
+        }
+        defaultSort={{ key: "createdAt", direction: "desc" }}
+        addButton={{ label: "Add class", onClick: openCreate }}
+        emptyMessage="No classes yet."
+        renderDetail={(classRecord) => (
+          <ClassDetailPanel classRecord={classRecord} />
+        )}
+        rowActions={(classRecord) => {
+          const actions = [
+            { label: "Edit", icon: "edit", onClick: () => openEditClass(classRecord) },
+          ];
+          if (canDeleteClass) {
+            actions.push({
+              label: "Delete",
+              icon: "trash",
+              tone: "danger",
+              onClick: () => setDeleting(classRecord),
+            });
+          }
+          return actions;
+        }}
+      />
+
+      <Modal
+        open={creating}
+        onClose={() => setCreating(false)}
+        title="Add a new class"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setCreating(false)}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="class-create-form"
+              disabled={submitting || (canAssignTeacher && !draft.teacherId)}
+              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {submitting ? "Saving..." : "Add class"}
+            </button>
+          </>
+        }
+      >
+        <form id="class-create-form" onSubmit={handleCreate} className="space-y-3">
+          {error && <Alert type="error" message={error} />}
+          {canAssignTeacher && teachers.length === 0 && (
+            <Alert
+              type="info"
+              message="No teachers available yet. Add a teacher under Staff & Salaries or User management, then create the class."
+            />
+          )}
+          <ClassFields
+            value={draft}
+            onChange={setDraft}
+            teachers={teachers}
+            showTeacher={canAssignTeacher}
+            teacherRequired={canAssignTeacher}
+            idPrefix="class-create"
+          />
+        </form>
+      </Modal>
 
       <Modal
         open={Boolean(editingClass)}
@@ -853,82 +916,14 @@ const ClassesPage = () => {
         </form>
       </Modal>
 
-      <Modal
-        open={Boolean(editingSchedule)}
-        onClose={() => setEditingSchedule(null)}
-        title="Edit schedule"
-        description={
-          editingSchedule
-            ? DAY_NAMES[editingSchedule.schedule.dayOfWeek]
-            : undefined
-        }
-        footer={
-          <>
-            <button
-              type="button"
-              onClick={() => setEditingSchedule(null)}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              form="schedule-edit-form"
-              disabled={submitting}
-              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
-            >
-              {submitting ? "Saving..." : "Save changes"}
-            </button>
-          </>
-        }
-      >
-        <form id="schedule-edit-form" onSubmit={handleUpdateSchedule}>
-          <ScheduleFields
-            value={editScheduleValue}
-            onChange={setEditScheduleValue}
-            idPrefix="schedule-edit"
-          />
-        </form>
-      </Modal>
-
-      <Modal
-        open={Boolean(editingMaterial)}
-        onClose={() => setEditingMaterial(null)}
-        title="Edit material"
-        description={editingMaterial ? editingMaterial.material.title : undefined}
-        footer={
-          <>
-            <button
-              type="button"
-              onClick={() => setEditingMaterial(null)}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              form="material-edit-form"
-              disabled={submitting}
-              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
-            >
-              {submitting ? "Saving..." : "Save changes"}
-            </button>
-          </>
-        }
-      >
-        <form id="material-edit-form" onSubmit={handleUpdateMaterial}>
-          <MaterialFields
-            value={editMaterialValue}
-            onChange={setEditMaterialValue}
-            idPrefix="material-edit"
-          />
-        </form>
-      </Modal>
-
       <ConfirmDialog
         open={Boolean(deleting)}
-        title={deleteTitle}
-        message={deleteMessage}
+        title="Delete class"
+        message={
+          deleting
+            ? `"${deleting.name}" will be removed. Students are kept but will have no class.`
+            : ""
+        }
         busy={deleteBusy}
         onConfirm={handleDelete}
         onCancel={() => setDeleting(null)}

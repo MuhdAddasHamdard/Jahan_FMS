@@ -1,4 +1,5 @@
 import Modal from "./Modal";
+import Icon from "./Icons";
 
 const ConfirmDialog = ({
   open,
@@ -11,11 +12,6 @@ const ConfirmDialog = ({
   onConfirm,
   onCancel,
 }) => {
-  const confirmClass =
-    tone === "danger"
-      ? "bg-red-600 hover:bg-red-700 focus-visible:outline-red-600"
-      : "bg-teal-600 hover:bg-teal-700 focus-visible:outline-teal-600";
-
   return (
     <Modal
       open={open}
@@ -28,7 +24,7 @@ const ConfirmDialog = ({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+            className="btn btn-secondary"
           >
             {cancelLabel}
           </button>
@@ -36,7 +32,7 @@ const ConfirmDialog = ({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-60 ${confirmClass}`}
+            className={`btn ${tone === "danger" ? "btn-danger" : "btn-primary"}`}
           >
             {busy ? "Working..." : confirmLabel}
           </button>
@@ -44,12 +40,16 @@ const ConfirmDialog = ({
       }
     >
       <div className="flex gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600">
-          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-          </svg>
+        <span
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+            tone === "danger" ? "soft-danger" : "soft-brand"
+          }`}
+        >
+          <Icon name={tone === "danger" ? "warning" : "info"} className="h-5 w-5" />
         </span>
-        <p className="text-sm leading-relaxed text-slate-600">{message}</p>
+        <p className="text-sm leading-relaxed text-[color:var(--text-muted)]">
+          {message}
+        </p>
       </div>
     </Modal>
   );

@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useAuth } from "../auth/auth-context";
 import PageHeader from "../components/PageHeader";
-import Spinner from "../components/Spinner";
 import Alert from "../components/Alert";
 import Modal from "../components/Modal";
 import ConfirmDialog from "../components/ConfirmDialog";
+import DataTable from "../components/DataTable";
 import { FormField, inputClass, errorInputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
 import { formatDate } from "../utils/format";
@@ -197,6 +197,73 @@ const UsersPage = () => {
     }
   };
 
+  const columns = [
+    {
+      key: "name",
+      header: "User",
+      sortable: true,
+      render: (user) => (
+        <div>
+          <p className="font-medium text-slate-900">
+            {user.name}
+            {user.id === currentUser?.id && (
+              <span className="ml-2 rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700">
+                You
+              </span>
+            )}
+          </p>
+          <p className="text-xs text-slate-500">{user.email}</p>
+        </div>
+      ),
+    },
+    {
+      key: "role",
+      header: "Role",
+      sortable: true,
+      render: (user) => (
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+            ROLE_BADGE[user.role] || "bg-slate-100 text-slate-600"
+          }`}
+        >
+          {user.role}
+        </span>
+      ),
+    },
+    {
+      key: "changeRole",
+      header: "Change role",
+      render: (user) => {
+        const isSelf = user.id === currentUser?.id;
+        return (
+          <select
+            value={selectedRoles[user.id] || user.role}
+            onChange={(event) => handleRoleChange(user.id, event.target.value)}
+            disabled={savingId === user.id || isSelf}
+            aria-label={`Role for ${user.name}`}
+            className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-teal-500 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {ROLES.map((role) => (
+              <option key={role} value={role}>
+                {role}
+              </option>
+            ))}
+          </select>
+        );
+      },
+    },
+    {
+      key: "createdAt",
+      header: "Joined",
+      align: "right",
+      sortable: true,
+      sortValue: (user) => (user.createdAt ? new Date(user.createdAt).getTime() : 0),
+      render: (user) => (
+        <span className="text-slate-500">{formatDate(user.createdAt)}</span>
+      ),
+    },
+  ];
+
   return (
     <div>
       <PageHeader
@@ -204,100 +271,50 @@ const UsersPage = () => {
         description="Manage system users, their details and roles. Administrator only."
       />
 
-      {error && <div className="mb-4"><Alert type="error" message={error} /></div>}
-
-      <div className="mb-4 flex justify-end">
-        <button
-          onClick={openCreate}
-          className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-700"
-        >
-          Add user
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="flex h-48 items-center justify-center"><Spinner /></div>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full min-w-[640px]">
-            <thead>
-              <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                <th className="px-5 py-3">User</th>
-                <th className="px-5 py-3">Role</th>
-                <th className="hidden px-5 py-3 md:table-cell">Joined</th>
-                <th className="px-5 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => {
-                const isSelf = user.id === currentUser?.id;
-                return (
-                  <tr
-                    key={user.id}
-                    className="border-b border-slate-100 last:border-0"
-                  >
-                    <td className="px-5 py-4">
-                      <p className="text-sm font-medium text-slate-900">
-                        {user.name}
-                        {isSelf && (
-                          <span className="ml-2 rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700">
-                            You
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs text-slate-500">{user.email}</p>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          ROLE_BADGE[user.role] || "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="hidden px-5 py-4 text-sm text-slate-500 md:table-cell">
-                      {formatDate(user.createdAt)}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <select
-                          value={selectedRoles[user.id] || user.role}
-                          onChange={(event) =>
-                            handleRoleChange(user.id, event.target.value)
-                          }
-                          disabled={savingId === user.id || isSelf}
-                          aria-label={`Role for ${user.name}`}
-                          className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-teal-500 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {ROLES.map((role) => (
-                            <option key={role} value={role}>
-                              {role}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => openEdit(user)}
-                          className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => setDeleting(user)}
-                          disabled={isSelf}
-                          className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {error && (
+        <div className="mb-4">
+          <Alert type="error" message={error} />
         </div>
       )}
+
+      <DataTable
+        title="All users"
+        count={users.length}
+        loading={loading}
+        rows={users}
+        columns={columns}
+        searchPlaceholder="Search users..."
+        searchValue={(user) => [user.name, user.email, user.role].filter(Boolean).join(" ")}
+        filters={[
+          {
+            key: "role",
+            label: "Filter by role",
+            options: [
+              { value: "", label: "All roles" },
+              ...ROLES.map((role) => ({ value: role, label: role })),
+            ],
+            value: (user) => user.role,
+          },
+        ]}
+        defaultSort={{ key: "createdAt", direction: "desc" }}
+        addButton={{ label: "Add user", onClick: openCreate }}
+        emptyMessage="No users found."
+        rowActions={(user) => {
+          const isSelf = user.id === currentUser?.id;
+          const actions = [
+            { label: "Edit", icon: "edit", onClick: () => openEdit(user) },
+          ];
+          if (!isSelf) {
+            actions.push({
+              label: "Delete",
+              icon: "trash",
+              tone: "danger",
+              onClick: () => setDeleting(user),
+            });
+          }
+          return actions;
+        }}
+      />
 
       <Modal
         open={Boolean(editing)}
