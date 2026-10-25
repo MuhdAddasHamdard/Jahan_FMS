@@ -146,6 +146,7 @@ model Receipt {
   userId       Int
   user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   installments FeeInstallment[]
+  refunds      Refund[]
   createdAt    DateTime         @default(now())
 
   @@index([userId])
@@ -155,6 +156,8 @@ model Refund {
   id         Int          @id @default(autoincrement())
   studentId  Int
   student    Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  receiptId  Int?
+  receipt    Receipt?     @relation(fields: [receiptId], references: [id], onDelete: SetNull)
   amount     Decimal      @default(0) @db.Decimal(12, 2)
   reason     String?
   refundedOn DateTime     @default(now())
@@ -163,6 +166,7 @@ model Refund {
   createdAt  DateTime     @default(now())
 
   @@index([studentId])
+  @@index([receiptId])
   @@index([userId])
 }
 

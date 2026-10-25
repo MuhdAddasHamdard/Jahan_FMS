@@ -94,6 +94,7 @@ const buildSummary = async (scope) => {
       orderBy: { paidAt: "desc" },
       take: 5,
       include: {
+        refunds: { select: { amount: true } },
         installments: {
           include: {
             studentFee: {
@@ -128,14 +129,31 @@ const buildSummary = async (scope) => {
     studentCount,
     classCount,
     feeTypeCount,
-    recentReceipts: recentReceipts.map((receipt) => ({
-      id: receipt.id,
-      number: receipt.number,
-      amount: toNumber(receipt.amount),
-      paidAt: receipt.paidAt,
-      student: receipt.installments[0]?.studentFee.student ?? null,
-      feeType: receipt.installments[0]?.studentFee.feeType ?? null,
-    })),
+    recentReceipts: recentReceipts.map((receipt) => {
+      const amount = toNumber(receipt.amount);
+      const refundedAmount = (receipt.refunds ?? []).reduce(
+        (sum, refund) => sum + toNumber(refund.amount),
+        0,
+      );
+
+      let refundStatus = "NONE";
+      if (refundedAmount > 0 && refundedAmount >= amount - 0.001) {
+        refundStatus = "REFUNDED";
+      } else if (refundedAmount > 0) {
+        refundStatus = "PARTIAL";
+      }
+
+      return {
+        id: receipt.id,
+        number: receipt.number,
+        amount,
+        refundedAmount,
+        refundStatus,
+        paidAt: receipt.paidAt,
+        student: receipt.installments[0]?.studentFee.student ?? null,
+        feeType: receipt.installments[0]?.studentFee.feeType ?? null,
+      };
+    }),
     period: {
       from: startOfMonth,
       to: endOfMonth,

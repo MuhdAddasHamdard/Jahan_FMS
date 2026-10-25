@@ -21,7 +21,8 @@ export const validateStudentAccount = (req, res, next) => {
 };
 
 export const validateStudent = (req, res, next) => {
-  const { admissionNo, name, status, classId } = req.body;
+  const { admissionNo, name, status, classId, feeTypeId, feeAmount, installmentCount } =
+    req.body;
 
   if (!admissionNo || typeof admissionNo !== "string" || admissionNo.trim().length === 0) {
     return res.status(400).json({ message: "Admission number is required" });
@@ -39,6 +40,33 @@ export const validateStudent = (req, res, next) => {
 
   if (classId !== undefined && classId !== null && Number.isNaN(Number(classId))) {
     return res.status(400).json({ message: "classId must be a number" });
+  }
+
+  if (
+    feeTypeId !== undefined &&
+    feeTypeId !== null &&
+    feeTypeId !== "" &&
+    Number.isNaN(Number(feeTypeId))
+  ) {
+    return res.status(400).json({ message: "feeTypeId must be a number" });
+  }
+
+  if (
+    feeAmount !== undefined &&
+    feeAmount !== null &&
+    feeAmount !== "" &&
+    (Number.isNaN(Number(feeAmount)) || Number(feeAmount) < 0)
+  ) {
+    return res.status(400).json({ message: "feeAmount must be a positive number" });
+  }
+
+  if (
+    installmentCount !== undefined &&
+    installmentCount !== null &&
+    installmentCount !== "" &&
+    (Number.isNaN(Number(installmentCount)) || Number(installmentCount) < 1)
+  ) {
+    return res.status(400).json({ message: "installmentCount must be at least 1" });
   }
 
   next();

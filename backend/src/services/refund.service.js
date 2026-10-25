@@ -1,6 +1,59 @@
 import prisma from "../prisma";
 import { toNumber } from "../utils/money";
 
+const formatReceiptRef = (receipt) =>
+  receipt
+    ? {
+        id: receipt.id,
+        number: receipt.number,
+        amount: toNumber(receipt.amount),
+        paidAt: receipt.paidAt,
+      }
+    : null;
+
+const formatRefund = (refund) => ({
+  id: refund.id,
+  student: refund.student,
+  receipt: formatReceiptRef(refund.receipt),
+  amount: toNumber(refund.amount),
+  reason: refund.reason,
+  refundedOn: refund.refundedOn,
+  createdAt: refund.createdAt,
+});
+
+const refundInclude = {
+  student: { select: { id: true, admissionNo: true, name: true } },
+  receipt: { select: { id: true, number: true, amount: true, paidAt: true } },
+};
+
+// Confirms a receipt belongs to the student being refunded. Receipts reach a
+// student through their installments, so any of the linked installments must
+// point at that student.
+const receiptBelongsToStudent = async (tx, receiptId, studentId) => {
+  const receipt = await tx.receipt.findFirst({
+    where: { id: Number(receiptId) },
+    include: {
+      installments: {
+        include: { studentFee: { select: { studentId: true } } },
+      },
+    },
+  });
+
+  if (!receipt) {
+    return { error: "RECEIPT_NOT_FOUND" };
+  }
+
+  const belongs = receipt.installments.some(
+    (installment) => installment.studentFee.studentId === studentId,
+  );
+
+  if (!belongs) {
+    return { error: "RECEIPT_STUDENT_MISMATCH" };
+  }
+
+  return { receipt };
+};
+
 export const getRefunds = async (userId, filters = {}) => {
   const { studentId } = filters;
 
@@ -12,23 +65,17 @@ export const getRefunds = async (userId, filters = {}) => {
 
   const refunds = await prisma.refund.findMany({
     where,
-    include: {
-      student: { select: { id: true, admissionNo: true, name: true } },
-    },
+    include: refundInclude,
     orderBy: { refundedOn: "desc" },
   });
 
-  return refunds.map((refund) => ({
-    id: refund.id,
-    student: refund.student,
-    amount: toNumber(refund.amount),
-    reason: refund.reason,
-    refundedOn: refund.refundedOn,
-    createdAt: refund.createdAt,
-  }));
+  return refunds.map(formatRefund);
 };
 
-export const createRefund = async (userId, { studentId, amount, reason, refundedOn }) => {
+export const createRefund = async (
+  userId,
+  { studentId, receiptId, amount, reason, refundedOn },
+) => {
   return prisma.$transaction(async (tx) => {
     const student = await tx.student.findFirst({
       where: { id: Number(studentId) },
@@ -37,6 +84,27 @@ export const createRefund = async (userId, { studentId, amount, reason, refunded
 
     if (!student) {
       return { error: "STUDENT_NOT_FOUND" };
+    }
+
+    let linkedReceiptId = null;
+
+    if (receiptId !== undefined && receiptId !== null && receiptId !== "") {
+      const check = await receiptBelongsToStudent(tx, receiptId, student.id);
+      if (check.error) {
+        return { error: check.error };
+      }
+
+      const receiptRefunds = await tx.refund.aggregate({
+        where: { receiptId: check.receipt.id },
+        _sum: { amount: true },
+      });
+
+      const receiptRefunded = toNumber(receiptRefunds._sum.amount) ?? 0;
+      if (Number(amount) > toNumber(check.receipt.amount) - receiptRefunded) {
+        return { error: "REFUND_EXCEEDS_RECEIPT" };
+      }
+
+      linkedReceiptId = check.receipt.id;
     }
 
     const paidRows = await tx.feeInstallment.aggregate({
@@ -64,31 +132,28 @@ export const createRefund = async (userId, { studentId, amount, reason, refunded
     const refund = await tx.refund.create({
       data: {
         studentId: student.id,
+        receiptId: linkedReceiptId,
         amount: refundAmount,
         reason: reason ?? null,
         refundedOn: refundedOnDate,
         userId,
       },
-      include: {
-        student: { select: { id: true, admissionNo: true, name: true } },
-      },
+      include: refundInclude,
     });
 
-    return {
-      id: refund.id,
-      student: refund.student,
-      amount: toNumber(refund.amount),
-      reason: refund.reason,
-      refundedOn: refund.refundedOn,
-    };
+    return formatRefund(refund);
   });
 };
 
-export const updateRefund = async (userId, id, { amount, reason, refundedOn }) => {
+export const updateRefund = async (
+  userId,
+  id,
+  { receiptId, amount, reason, refundedOn },
+) => {
   return prisma.$transaction(async (tx) => {
     const refund = await tx.refund.findFirst({
       where: { id: Number(id) },
-      select: { id: true, studentId: true, amount: true },
+      select: { id: true, studentId: true, receiptId: true, amount: true },
     });
 
     if (!refund) {
@@ -96,6 +161,48 @@ export const updateRefund = async (userId, id, { amount, reason, refundedOn }) =
     }
 
     const nextAmount = amount !== undefined ? Number(amount) : toNumber(refund.amount);
+    let nextReceiptId = refund.receiptId;
+
+    if (receiptId !== undefined) {
+      if (receiptId === null || receiptId === "") {
+        nextReceiptId = null;
+      } else {
+        const check = await receiptBelongsToStudent(tx, receiptId, refund.studentId);
+        if (check.error) {
+          return { error: check.error };
+        }
+
+        const receiptRefunds = await tx.refund.aggregate({
+          where: { receiptId: check.receipt.id, id: { not: refund.id } },
+          _sum: { amount: true },
+        });
+
+        const receiptRefunded = toNumber(receiptRefunds._sum.amount) ?? 0;
+        if (nextAmount > toNumber(check.receipt.amount) - receiptRefunded) {
+          return { error: "REFUND_EXCEEDS_RECEIPT" };
+        }
+
+        nextReceiptId = check.receipt.id;
+      }
+    }
+
+    if (amount !== undefined && nextReceiptId && nextReceiptId === refund.receiptId) {
+      const receipt = await tx.receipt.findUnique({
+        where: { id: nextReceiptId },
+        select: { amount: true },
+      });
+      const receiptRefunds = await tx.refund.aggregate({
+        where: { receiptId: nextReceiptId, id: { not: refund.id } },
+        _sum: { amount: true },
+      });
+
+      if (receipt) {
+        const receiptRefunded = toNumber(receiptRefunds._sum.amount) ?? 0;
+        if (nextAmount > toNumber(receipt.amount) - receiptRefunded) {
+          return { error: "REFUND_EXCEEDS_RECEIPT" };
+        }
+      }
+    }
 
     if (amount !== undefined) {
       const paidRows = await tx.feeInstallment.aggregate({
@@ -119,22 +226,15 @@ export const updateRefund = async (userId, id, { amount, reason, refundedOn }) =
     const updated = await tx.refund.update({
       where: { id: refund.id },
       data: {
+        receiptId: nextReceiptId,
         amount: nextAmount,
         reason: reason !== undefined ? reason || null : undefined,
         refundedOn: refundedOn ? new Date(refundedOn) : undefined,
       },
-      include: {
-        student: { select: { id: true, admissionNo: true, name: true } },
-      },
+      include: refundInclude,
     });
 
-    return {
-      id: updated.id,
-      student: updated.student,
-      amount: toNumber(updated.amount),
-      reason: updated.reason,
-      refundedOn: updated.refundedOn,
-    };
+    return formatRefund(updated);
   });
 };
 

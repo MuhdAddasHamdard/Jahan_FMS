@@ -20,7 +20,7 @@ const formatInstallment = (installment) => ({
   status: installment.status,
 });
 
-const installmentsFor = (totalAmount, installmentCount) => {
+export const installmentsFor = (totalAmount, installmentCount) => {
   const count = Math.max(1, Number(installmentCount) || 1);
 
   if (count === 1) {
@@ -428,6 +428,7 @@ const installmentStatusFor = (amount, paidAmount) => {
 };
 
 const receiptInclude = {
+  refunds: { select: { amount: true } },
   installments: {
     include: {
       studentFee: {
@@ -440,16 +441,33 @@ const receiptInclude = {
   },
 };
 
-const formatReceipt = (receipt) => ({
-  id: receipt.id,
-  number: receipt.number,
-  amount: toNumber(receipt.amount),
-  paidAt: receipt.paidAt,
-  notes: receipt.notes,
-  installmentId: receipt.installments[0]?.id ?? null,
-  student: receipt.installments[0]?.studentFee.student ?? null,
-  feeType: receipt.installments[0]?.studentFee.feeType ?? null,
-});
+const formatReceipt = (receipt) => {
+  const amount = toNumber(receipt.amount);
+  const refundedAmount = (receipt.refunds ?? []).reduce(
+    (sum, refund) => sum + toNumber(refund.amount),
+    0,
+  );
+
+  let refundStatus = "NONE";
+  if (refundedAmount > 0 && refundedAmount >= amount - 0.001) {
+    refundStatus = "REFUNDED";
+  } else if (refundedAmount > 0) {
+    refundStatus = "PARTIAL";
+  }
+
+  return {
+    id: receipt.id,
+    number: receipt.number,
+    amount,
+    refundedAmount,
+    refundStatus,
+    paidAt: receipt.paidAt,
+    notes: receipt.notes,
+    installmentId: receipt.installments[0]?.id ?? null,
+    student: receipt.installments[0]?.studentFee.student ?? null,
+    feeType: receipt.installments[0]?.studentFee.feeType ?? null,
+  };
+};
 
 export const getStudentInstallments = async (userId, studentId) => {
   const plans = await prisma.studentFee.findMany({

@@ -3,6 +3,7 @@ import prisma from "../prisma";
 import { toNumber } from "../utils/money";
 import { ROLES } from "../constants/roles";
 import { sharesInstituteData, studentScope } from "../utils/scope";
+import { installmentsFor } from "./fee.service";
 
 const formatStudent = (student) => ({
   id: student.id,
@@ -167,22 +168,73 @@ export const getStudentById = async (userId, id, role) => {
 };
 
 export const createStudent = async (userId, studentData) => {
-  const student = await prisma.student.create({
-    data: {
-      admissionNo: studentData.admissionNo.trim(),
-      name: studentData.name.trim(),
-      guardianName: studentData.guardianName ?? null,
-      phone: studentData.phone ?? null,
-      email: studentData.email ?? null,
-      address: studentData.address ?? null,
-      status: studentData.status ?? "ACTIVE",
-      classId: studentData.classId ? Number(studentData.classId) : null,
-      userId,
-    },
-    include: { class: studentClassInclude },
-  });
+  return prisma.$transaction(async (tx) => {
+    let feeType = null;
 
-  return formatStudent(student);
+    if (studentData.feeTypeId !== undefined && studentData.feeTypeId !== null && studentData.feeTypeId !== "") {
+      feeType = await tx.feeType.findFirst({
+        where: { id: Number(studentData.feeTypeId) },
+        select: { id: true, amount: true },
+      });
+
+      if (!feeType) {
+        return { error: "FEETYPE_NOT_FOUND" };
+      }
+    }
+
+    const student = await tx.student.create({
+      data: {
+        admissionNo: studentData.admissionNo.trim(),
+        name: studentData.name.trim(),
+        guardianName: studentData.guardianName ?? null,
+        phone: studentData.phone ?? null,
+        email: studentData.email ?? null,
+        address: studentData.address ?? null,
+        status: studentData.status ?? "ACTIVE",
+        classId: studentData.classId ? Number(studentData.classId) : null,
+        userId,
+      },
+      include: { class: studentClassInclude },
+    });
+
+    let feePlan = null;
+
+    if (feeType) {
+      const hasAmount =
+        studentData.feeAmount !== undefined &&
+        studentData.feeAmount !== null &&
+        studentData.feeAmount !== "";
+      const total = hasAmount ? Number(studentData.feeAmount) : Number(feeType.amount);
+      const count = Math.max(1, Number(studentData.installmentCount) || 1);
+      const schedule = installmentsFor(total, count);
+
+      feePlan = await tx.studentFee.create({
+        data: {
+          studentId: student.id,
+          feeTypeId: feeType.id,
+          totalAmount: total,
+          installmentCount: count,
+          userId,
+          installments: {
+            create: schedule.map((entry) => ({
+              amount: entry.amount,
+              dueDate: entry.dueDate,
+              userId,
+            })),
+          },
+        },
+        include: {
+          feeType: true,
+          installments: { include: { receipt: true }, orderBy: { dueDate: "asc" } },
+        },
+      });
+    }
+
+    return {
+      ...formatStudent(student),
+      feePlan: feePlan ? formatFeePlan(feePlan) : null,
+    };
+  });
 };
 
 export const updateStudent = async (userId, role, id, studentData) => {

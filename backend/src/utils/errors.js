@@ -1,6 +1,36 @@
 export const businessErrorToResponse = (error) => {
   const map = {
     STUDENT_NOT_FOUND: { status: 404, message: "Student not found" },
+    STUDENT_ADMISSION_EXISTS: {
+      status: 409,
+      message: "That admission number is already in use",
+    },
+    INVALID_INPUT: {
+      status: 400,
+      message: "Some required details were missing. Please provide them and try again.",
+    },
+    USER_DELETE_SELF: {
+      status: 400,
+      message: "You cannot delete your own account",
+    },
+    EXPENSE_NOT_FOUND: { status: 404, message: "Expense not found" },
+    FEE_PLAN_NOT_FOUND: { status: 404, message: "Fee plan not found" },
+    CLASS_SCHEDULE_NOT_FOUND: { status: 404, message: "Class schedule not found" },
+    COURSE_MATERIAL_NOT_FOUND: { status: 404, message: "Course material not found" },
+    RECEIPT_NOT_FOUND: { status: 404, message: "Receipt not found" },
+    RECEIPT_STUDENT_MISMATCH: {
+      status: 400,
+      message: "That receipt does not belong to this student",
+    },
+    REFUND_EXCEEDS_RECEIPT: {
+      status: 400,
+      message: "This refund exceeds the amount left on that receipt",
+    },
+    USER_NOT_FOUND: { status: 404, message: "User not found" },
+    INVALID_ROLE: {
+      status: 400,
+      message: "Role must be ADMIN, FINANCE, TEACHER or STUDENT",
+    },
     STUDENT_ALREADY_LINKED: {
       status: 409,
       message: "This student already has a login account",

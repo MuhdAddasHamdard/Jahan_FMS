@@ -40,6 +40,10 @@ export const getStudent = async (req, res) => {
 export const createStudentController = async (req, res) => {
   try {
     const student = await createStudent(req.user.id, req.body);
+    if (student?.error) {
+      const mapped = businessErrorToResponse(student.error);
+      return res.status(mapped.status).json({ message: mapped.message });
+    }
     res.status(201).json(student);
   } catch (error) {
     console.error(error);

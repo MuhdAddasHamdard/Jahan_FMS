@@ -116,7 +116,7 @@ export const validateSalaryPaymentUpdate = (req, res, next) => {
 };
 
 export const validateRefundUpdate = (req, res, next) => {
-  const { amount, refundedOn } = req.body;
+  const { amount, receiptId, refundedOn } = req.body;
   const keys = Object.keys(req.body);
 
   if (keys.length === 0) {
@@ -124,13 +124,22 @@ export const validateRefundUpdate = (req, res, next) => {
   }
 
   for (const key of keys) {
-    if (!["amount", "reason", "refundedOn"].includes(key)) {
+    if (!["amount", "reason", "receiptId", "refundedOn"].includes(key)) {
       return res.status(400).json({ message: `Field "${key}" is not updatable` });
     }
   }
 
   if (amount !== undefined && !isPositiveNumber(amount)) {
     return res.status(400).json({ message: "amount must be a positive number" });
+  }
+
+  if (
+    receiptId !== undefined &&
+    receiptId !== null &&
+    receiptId !== "" &&
+    Number.isNaN(Number(receiptId))
+  ) {
+    return res.status(400).json({ message: "receiptId must be a number" });
   }
 
   if (refundedOn !== undefined && Number.isNaN(Date.parse(refundedOn))) {
@@ -141,7 +150,7 @@ export const validateRefundUpdate = (req, res, next) => {
 };
 
 export const validateRefund = (req, res, next) => {
-  const { studentId, amount, refundedOn } = req.body;
+  const { studentId, receiptId, amount, refundedOn } = req.body;
 
   if (!studentId || Number.isNaN(Number(studentId))) {
     return res.status(400).json({ message: "studentId is required" });
@@ -149,6 +158,15 @@ export const validateRefund = (req, res, next) => {
 
   if (!isPositiveNumber(amount)) {
     return res.status(400).json({ message: "amount must be a positive number" });
+  }
+
+  if (
+    receiptId !== undefined &&
+    receiptId !== null &&
+    receiptId !== "" &&
+    Number.isNaN(Number(receiptId))
+  ) {
+    return res.status(400).json({ message: "receiptId must be a number" });
   }
 
   if (refundedOn !== undefined && Number.isNaN(Date.parse(refundedOn))) {
