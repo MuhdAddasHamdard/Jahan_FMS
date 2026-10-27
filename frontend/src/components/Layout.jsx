@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/auth-context";
 import { useTheme } from "../theme/theme-context";
-import ChatBot from "./ChatBot";
 import Icon from "./Icons";
 
 const NAV_SECTIONS = [
@@ -105,18 +104,6 @@ const ThemeToggle = ({ className = "" }) => {
     </button>
   );
 };
-
-const AboutAssistant = () => (
-  <div className="rounded-xl border border-line bg-surface-2 p-3 text-xs text-muted">
-    <p className="flex items-center gap-1.5 font-semibold text-content">
-      <Icon name="sparkles" className="h-3.5 w-3.5 text-brand-strong" />
-      Jahan Assistant
-    </p>
-    <p className="mt-1 leading-relaxed">
-      Ask the AI assistant to record payments, create students or generate reports.
-    </p>
-  </div>
-);
 
 const navLinkClass = (isCollapsed) => ({ isActive }) =>
   `group relative flex items-center rounded-xl py-2.5 text-sm font-medium transition-all duration-200 ${
@@ -390,11 +377,6 @@ const Layout = () => {
               isCollapsed={collapsed}
             />
           </div>
-          {!collapsed && (
-            <div className="border-t border-line p-3">
-              <AboutAssistant />
-            </div>
-          )}
         </aside>
 
         {/* Main column */}
@@ -602,8 +584,6 @@ const Layout = () => {
           </div>
         </div>
       )}
-
-      <ChatBot />
     </div>
   );
 };
