@@ -8,7 +8,6 @@ import { FormField, inputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
 import { formatNumber, formatDate, formatDateTime } from "../utils/format";
 import {
-  openPrintWindow,
   printFeeReceipt,
 } from "../utils/printDocument";
 
@@ -71,7 +70,7 @@ const ReceiptsPage = () => {
       return;
     }
 
-    toast.error("Receipt saved. Allow pop-ups and use Print from the receipts list.");
+    toast.error("Allow pop-ups to print this receipt.");
   };
 
   const refresh = async () => {
@@ -156,9 +155,8 @@ const ReceiptsPage = () => {
 
     setSaving(true);
     setError("");
-    const printWindow = openPrintWindow();
     try {
-      const result = await api.post("/fees/payments", {
+      await api.post("/fees/payments", {
         installmentId: Number(collect.installmentId),
         amount,
         date: collect.paidAt || undefined,
@@ -166,11 +164,9 @@ const ReceiptsPage = () => {
       });
       setCreating(false);
       setCollect(emptyCollect);
-      toast.success("Payment collected and receipt created");
-      printReceipt(result.receipt, printWindow);
+      toast.success("Payment collected. Print the receipt from its Actions menu.");
       await refresh();
     } catch (err) {
-      printWindow?.close();
       toast.error(err.message);
     } finally {
       setSaving(false);

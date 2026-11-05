@@ -9,7 +9,6 @@ import DataTable from "../components/DataTable";
 import { FormField, inputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
 import { formatNumber, formatDate } from "../utils/format";
-import { openPrintWindow, printFeeReceipt } from "../utils/printDocument";
 
 const statusClass = (status) => {
   const styles = {
@@ -214,27 +213,13 @@ const PlanDetailPanel = ({ plan, onChanged }) => {
   }, [plan.id, toast]);
 
   const handleCollect = async (payload) => {
-    const printWindow = openPrintWindow();
     try {
-      const result = await api.post("/fees/payments", payload);
+      await api.post("/fees/payments", payload);
       toast.success(`Payment collected for ${plan.student.name}`);
-      let printed = false;
-      let printFailed = false;
-      try {
-        printed = printFeeReceipt(result.receipt, printWindow);
-      } catch (err) {
-        printFailed = true;
-        printWindow?.close();
-        toast.error(err.message || "Could not open the receipt for printing.");
-      }
-      if (!printed && !printFailed) {
-        toast.error("Receipt saved. Allow pop-ups and print it from the Receipts page.");
-      }
       setCollectingId(null);
       await refresh();
       onChanged?.();
     } catch (err) {
-      printWindow?.close();
       toast.error(err.message);
     }
   };
