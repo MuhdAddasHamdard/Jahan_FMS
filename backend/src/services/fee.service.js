@@ -416,6 +416,9 @@ export const collectFeePayment = async (
         number: finalReceipt.number,
         amount: toNumber(finalReceipt.amount),
         paidAt: finalReceipt.paidAt,
+        notes: finalReceipt.notes,
+        student: installment.studentFee.student,
+        feeType: installment.studentFee.feeType,
       },
     };
   });

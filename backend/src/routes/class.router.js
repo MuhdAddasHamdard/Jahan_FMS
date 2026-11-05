@@ -1,7 +1,8 @@
 import express from "express";
 import { authenticateUser } from "../middleware/auth.middleware";
-import { authorizeRole } from "../middleware/role.middleware";
+import { authorizeRoleOrPermission } from "../middleware/role.middleware";
 import { ROLES } from "../constants/roles";
+import { PERMISSIONS } from "../constants/permissions";
 import {
   validateClass,
   validateClassUpdate,
@@ -28,7 +29,15 @@ import {
 
 const router = express.Router();
 
-router.use(authenticateUser, authorizeRole(ROLES.ADMIN, ROLES.FINANCE, ROLES.TEACHER));
+router.use(
+  authenticateUser,
+  authorizeRoleOrPermission(
+    PERMISSIONS.CLASSES,
+    ROLES.ADMIN,
+    ROLES.FINANCE,
+    ROLES.TEACHER,
+  ),
+);
 
 router.get("/", getClasses);
 router.post("/", validateClass, createClassController);

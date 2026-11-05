@@ -22,6 +22,7 @@ import StaffPage from "../pages/StaffPage";
 import SalariesPage from "../pages/SalariesPage";
 import InstituteReportsPage from "../pages/InstituteReportsPage";
 import SettingsPage from "../pages/SettingsPage";
+import { PERMISSIONS } from "../auth/permissions";
 
 const NotFound = () => (
   <div className="flex min-h-screen flex-col items-center justify-center bg-slate-100">
@@ -69,7 +70,7 @@ const AppRoutes = () => {
               <Route
                 path="/reports"
                 element={
-                  <RoleRoute roles={financeRoles}>
+                  <RoleRoute roles={financeRoles} permission={PERMISSIONS.REPORTS}>
                     <ReportsPage />
                   </RoleRoute>
                 }
@@ -77,7 +78,7 @@ const AppRoutes = () => {
               <Route
                 path="/reports/institute"
                 element={
-                  <RoleRoute roles={financeRoles}>
+                  <RoleRoute roles={financeRoles} permission={PERMISSIONS.REPORTS}>
                     <InstituteReportsPage />
                   </RoleRoute>
                 }
@@ -85,7 +86,7 @@ const AppRoutes = () => {
               <Route
                 path="/classes"
                 element={
-                  <RoleRoute roles={staffRoles}>
+                  <RoleRoute roles={staffRoles} permission={PERMISSIONS.CLASSES}>
                     <ClassesPage />
                   </RoleRoute>
                 }
@@ -93,7 +94,7 @@ const AppRoutes = () => {
               <Route
                 path="/students"
                 element={
-                  <RoleRoute roles={staffRoles}>
+                  <RoleRoute roles={staffRoles} permission={PERMISSIONS.STUDENTS}>
                     <StudentsPage />
                   </RoleRoute>
                 }
@@ -101,7 +102,7 @@ const AppRoutes = () => {
               <Route
                 path="/fee-types"
                 element={
-                  <RoleRoute roles={financeRoles}>
+                  <RoleRoute roles={financeRoles} permission={PERMISSIONS.FINANCE}>
                     <FeeTypesPage />
                   </RoleRoute>
                 }
@@ -109,7 +110,7 @@ const AppRoutes = () => {
               <Route
                 path="/fee-plans"
                 element={
-                  <RoleRoute roles={financeRoles}>
+                  <RoleRoute roles={financeRoles} permission={PERMISSIONS.FINANCE}>
                     <FeePlansPage />
                   </RoleRoute>
                 }
@@ -117,7 +118,7 @@ const AppRoutes = () => {
               <Route
                 path="/receipts"
                 element={
-                  <RoleRoute roles={financeRoles}>
+                  <RoleRoute roles={financeRoles} permission={PERMISSIONS.FINANCE}>
                     <ReceiptsPage />
                   </RoleRoute>
                 }
@@ -125,7 +126,7 @@ const AppRoutes = () => {
               <Route
                 path="/refunds"
                 element={
-                  <RoleRoute roles={financeRoles}>
+                  <RoleRoute roles={financeRoles} permission={PERMISSIONS.FINANCE}>
                     <RefundsPage />
                   </RoleRoute>
                 }
@@ -133,7 +134,7 @@ const AppRoutes = () => {
               <Route
                 path="/staff"
                 element={
-                  <RoleRoute roles={financeRoles}>
+                  <RoleRoute roles={financeRoles} permission={PERMISSIONS.STAFF}>
                     <StaffPage />
                   </RoleRoute>
                 }
@@ -141,7 +142,7 @@ const AppRoutes = () => {
               <Route
                 path="/salaries"
                 element={
-                  <RoleRoute roles={financeRoles}>
+                  <RoleRoute roles={financeRoles} permission={PERMISSIONS.FINANCE}>
                     <SalariesPage />
                   </RoleRoute>
                 }
@@ -149,7 +150,7 @@ const AppRoutes = () => {
               <Route
                 path="/expenses"
                 element={
-                  <RoleRoute roles={financeRoles}>
+                  <RoleRoute roles={financeRoles} permission={PERMISSIONS.FINANCE}>
                     <ExpensesPage />
                   </RoleRoute>
                 }

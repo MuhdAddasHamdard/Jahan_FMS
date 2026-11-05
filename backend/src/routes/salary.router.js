@@ -1,7 +1,8 @@
 import express from "express";
 import { authenticateUser } from "../middleware/auth.middleware";
-import { authorizeRole } from "../middleware/role.middleware";
+import { authorizeRoleOrPermission } from "../middleware/role.middleware";
 import { ROLES } from "../constants/roles";
+import { PERMISSIONS } from "../constants/permissions";
 import {
   validateSalaryPayment,
   validateSalaryPaymentUpdate,
@@ -21,7 +22,10 @@ import {
 
 const router = express.Router();
 
-router.use(authenticateUser, authorizeRole(ROLES.ADMIN, ROLES.FINANCE));
+router.use(
+  authenticateUser,
+  authorizeRoleOrPermission(PERMISSIONS.FINANCE, ROLES.ADMIN, ROLES.FINANCE),
+);
 
 router.get("/rates", getSalaryRatesController);
 router.post("/rates", validateStaffSalary, createSalaryRateController);
@@ -34,7 +38,10 @@ router.patch("/payments/:id", validateSalaryPaymentUpdate, updateSalaryPaymentCo
 router.delete("/payments/:id", deleteSalaryPaymentController);
 
 export const salaryPaymentRouter = express.Router();
-salaryPaymentRouter.use(authenticateUser, authorizeRole(ROLES.ADMIN, ROLES.FINANCE));
+salaryPaymentRouter.use(
+  authenticateUser,
+  authorizeRoleOrPermission(PERMISSIONS.FINANCE, ROLES.ADMIN, ROLES.FINANCE),
+);
 salaryPaymentRouter.get("/", getSalaryPaymentsController);
 salaryPaymentRouter.post("/", validateSalaryPayment, createSalaryPaymentController);
 salaryPaymentRouter.patch("/:id", validateSalaryPaymentUpdate, updateSalaryPaymentController);

@@ -4,6 +4,8 @@ import PageHeader from "../components/PageHeader";
 import Spinner from "../components/Spinner";
 import Alert from "../components/Alert";
 import { formatNumber, formatDate, formatDateTime } from "../utils/format";
+import { useToast } from "../hooks/useToast";
+import { printFeeReceipt } from "../utils/printDocument";
 
 const statusClass = (status) => {
   const styles = {
@@ -24,6 +26,7 @@ const TOTALS = [
 ];
 
 const StudentPortal = () => {
+  const toast = useToast();
   const [portal, setPortal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -78,9 +81,24 @@ const StudentPortal = () => {
     .flatMap((plan) =>
       plan.installments
         .map((installment) => installment.receipt)
-        .filter((receipt) => Boolean(receipt)),
+        .filter((receipt) => Boolean(receipt))
+        .map((receipt) => ({
+          ...receipt,
+          student,
+          feeType: plan.feeType,
+        })),
     )
     .sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt));
+
+  const handlePrintReceipt = (receipt) => {
+    try {
+      if (!printFeeReceipt(receipt)) {
+        toast.error("Allow pop-ups to print this receipt.");
+      }
+    } catch (err) {
+      toast.error(err.message || "Could not open the receipt for printing.");
+    }
+  };
 
   return (
     <div>
@@ -297,9 +315,18 @@ const StudentPortal = () => {
                       {formatDateTime(receipt.paidAt)}
                     </p>
                   </div>
-                  <span className="text-sm font-semibold text-slate-900">
-                    {formatNumber(receipt.amount)}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-slate-900">
+                      {formatNumber(receipt.amount)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handlePrintReceipt(receipt)}
+                      className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:border-teal-500 hover:text-teal-700"
+                    >
+                      Print
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

@@ -86,6 +86,15 @@ export const AuthProvider = ({ children }) => {
     return data;
   }, []);
 
+  const hasPermission = useCallback(
+    (permission) =>
+      Boolean(
+        user &&
+          (user.role === "ADMIN" || user.permissions?.includes(permission)),
+      ),
+    [user],
+  );
+
   const value = useMemo(
     () => ({
       user,
@@ -94,13 +103,14 @@ export const AuthProvider = ({ children }) => {
       login,
       logout,
       updateUser,
+      hasPermission,
       isAuthenticated: Boolean(user),
       isAdmin: Boolean(user && user.role === "ADMIN"),
       isFinance: Boolean(user && user.role === "FINANCE"),
       isTeacher: Boolean(user && user.role === "TEACHER"),
       isStudent: Boolean(user && user.role === "STUDENT"),
     }),
-    [user, token, loading, login, logout, updateUser],
+    [user, token, loading, login, logout, updateUser, hasPermission],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

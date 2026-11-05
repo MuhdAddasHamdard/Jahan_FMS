@@ -53,6 +53,7 @@ import {
   CurrencyDollarIcon,
   UserPlusIcon,
   ShieldCheckIcon,
+  PrinterIcon,
 } from "@heroicons/react/24/outline";
 
 const PATHS = {
@@ -110,6 +111,7 @@ const PATHS = {
   currency: CurrencyDollarIcon,
   userPlus: UserPlusIcon,
   shield: ShieldCheckIcon,
+  printer: PrinterIcon,
 };
 
 const Icon = ({ name, className = "h-4 w-4", strokeWidth = 1.75, ...rest }) => {

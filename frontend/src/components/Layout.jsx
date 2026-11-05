@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/auth-context";
+import { PERMISSIONS } from "../auth/permissions";
 import { useTheme } from "../theme/theme-context";
 import Icon from "./Icons";
 
@@ -15,29 +16,88 @@ const NAV_SECTIONS = [
         label: "Institute Report",
         icon: "office",
         roles: ["ADMIN", "FINANCE"],
+        permission: PERMISSIONS.REPORTS,
       },
     ],
   },
   {
     title: "Finance",
-    roles: ["ADMIN", "FINANCE"],
     items: [
-      { to: "/reports", label: "Reports", icon: "chart" },
-      { to: "/fee-types", label: "Fee Types", icon: "document" },
-      { to: "/fee-plans", label: "Fee Plans", icon: "wallet" },
-      { to: "/receipts", label: "Receipts", icon: "receipt" },
-      { to: "/refunds", label: "Refunds", icon: "refund" },
-      { to: "/staff", label: "Staff", icon: "userGroup" },
-      { to: "/salaries", label: "Salaries", icon: "banknotes" },
-      { to: "/expenses", label: "Expenses", icon: "expense" },
+      {
+        to: "/reports",
+        label: "Reports",
+        icon: "chart",
+        roles: ["ADMIN", "FINANCE"],
+        permission: PERMISSIONS.REPORTS,
+      },
+      {
+        to: "/fee-types",
+        label: "Fee Types",
+        icon: "document",
+        roles: ["ADMIN", "FINANCE"],
+        permission: PERMISSIONS.FINANCE,
+      },
+      {
+        to: "/fee-plans",
+        label: "Fee Plans",
+        icon: "wallet",
+        roles: ["ADMIN", "FINANCE"],
+        permission: PERMISSIONS.FINANCE,
+      },
+      {
+        to: "/receipts",
+        label: "Receipts",
+        icon: "receipt",
+        roles: ["ADMIN", "FINANCE"],
+        permission: PERMISSIONS.FINANCE,
+      },
+      {
+        to: "/refunds",
+        label: "Refunds",
+        icon: "refund",
+        roles: ["ADMIN", "FINANCE"],
+        permission: PERMISSIONS.FINANCE,
+      },
+      {
+        to: "/staff",
+        label: "Staff",
+        icon: "userGroup",
+        roles: ["ADMIN", "FINANCE"],
+        permission: PERMISSIONS.STAFF,
+      },
+      {
+        to: "/salaries",
+        label: "Salaries",
+        icon: "banknotes",
+        roles: ["ADMIN", "FINANCE"],
+        permission: PERMISSIONS.FINANCE,
+      },
+      {
+        to: "/expenses",
+        label: "Expenses",
+        icon: "expense",
+        roles: ["ADMIN", "FINANCE"],
+        permission: PERMISSIONS.FINANCE,
+      },
     ],
   },
   {
     title: "Institute",
-    roles: ["ADMIN", "FINANCE", "TEACHER"],
     items: [
-      { to: "/classes", label: "Classes", icon: "book" },
-      { to: "/students", label: "Students", icon: "student" },
+      {
+        to: "/classes",
+        label: "Classes",
+        icon: "book",
+        roles: ["ADMIN", "FINANCE", "TEACHER"],
+        permission: PERMISSIONS.CLASSES,
+      },
+      {
+        to: "/students",
+        label: "Students",
+        icon: "student",
+        roles: ["ADMIN", "FINANCE", "TEACHER"],
+        permission: PERMISSIONS.STUDENTS,
+      },
     ],
   },
   {
@@ -265,7 +325,7 @@ const TopbarBreadcrumbs = ({ pathname }) => {
 };
 
 const Layout = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const { theme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -311,17 +371,20 @@ const Layout = () => {
     navigate("/login");
   };
 
-  const canView = (itemRoles) => !itemRoles || (role && itemRoles.includes(role));
+  const visibleSections = useMemo(() => {
+    const canView = (item) =>
+      (!item.roles || (role && item.roles.includes(role))) ||
+      (item.permission && hasPermission(item.permission));
 
-  const visibleSections = useMemo(
-    () =>
-      NAV_SECTIONS.map((section) => ({
+    return NAV_SECTIONS.map((section) => ({
         ...section,
-        items: section.items.filter((item) => canView(item.roles)),
-      })).filter((section) => canView(section.roles) && section.items.length > 0),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [role],
-  );
+        items: section.items.filter(canView),
+      })).filter(
+        (section) =>
+          (!section.roles || (role && section.roles.includes(role))) &&
+          section.items.length > 0,
+      );
+  }, [role, hasPermission]);
 
   const searchableItems = useMemo(
     () => visibleSections.flatMap((section) => section.items),

@@ -8,6 +8,10 @@ import Modal from "../components/Modal";
 import PageHeader from "../components/PageHeader";
 import { useToast } from "../hooks/useToast";
 import { formatDate, formatNumber } from "../utils/format";
+import {
+  openPrintWindow,
+  printSalaryVoucher,
+} from "../utils/printDocument";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const emptyRate = () => ({ staffId: "", amount: "", effectiveFrom: today() });
@@ -168,15 +172,29 @@ const SalariesPage = () => {
       amount: paymentForm.amount ? Number(paymentForm.amount) : undefined,
       paidOn: paymentForm.paidOn || undefined,
     };
+    const printWindow =
+      paymentEditor.mode === "create" ? openPrintWindow() : null;
     setBusy(true);
     setFormError("");
     try {
       if (paymentEditor.mode === "create") {
-        await api.post("/salaries/payments", {
+        const payment = await api.post("/salaries/payments", {
           ...payload,
           staffId: Number(paymentForm.staffId),
         });
         toast.success(`Salary payment recorded for ${paymentForm.periodMonth}`);
+        let printed = false;
+        let printFailed = false;
+        try {
+          printed = printSalaryVoucher(payment, printWindow);
+        } catch (err) {
+          printFailed = true;
+          printWindow?.close();
+          toast.error(err.message || "Could not open the salary voucher for printing.");
+        }
+        if (!printed && !printFailed) {
+          toast.error("Payment saved. Allow pop-ups and use Print voucher in the salary list.");
+        }
       } else {
         await api.patch(`/salaries/payments/${paymentEditor.payment.id}`, payload);
         toast.success("Salary payment updated");
@@ -184,6 +202,7 @@ const SalariesPage = () => {
       setPaymentEditor(null);
       await refresh();
     } catch (err) {
+      printWindow?.close();
       setFormError(err.message);
     } finally {
       setBusy(false);
@@ -239,6 +258,16 @@ const SalariesPage = () => {
       render: (rate) => formatDate(rate.effectiveFrom),
     },
   ];
+
+  const handlePrintVoucher = (payment) => {
+    try {
+      if (!printSalaryVoucher(payment)) {
+        toast.error("Allow pop-ups to print this salary voucher.");
+      }
+    } catch (err) {
+      toast.error(err.message || "Could not open the salary voucher for printing.");
+    }
+  };
 
   const paymentColumns = [
     {
@@ -296,6 +325,7 @@ const SalariesPage = () => {
         addButton={{ label: "Record payment", onClick: openNewPayment }}
         emptyMessage="No salary payments have been recorded."
         rowActions={(payment) => [
+          { label: "Print voucher", icon: "printer", onClick: () => handlePrintVoucher(payment) },
           { label: "Edit", icon: "edit", onClick: () => openEditPayment(payment) },
           {
             label: "Delete",

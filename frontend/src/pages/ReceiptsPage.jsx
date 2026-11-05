@@ -7,6 +7,10 @@ import DataTable from "../components/DataTable";
 import { FormField, inputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
 import { formatNumber, formatDate, formatDateTime } from "../utils/format";
+import {
+  openPrintWindow,
+  printFeeReceipt,
+} from "../utils/printDocument";
 
 const emptyCollect = {
   studentId: "",
@@ -57,6 +61,18 @@ const ReceiptsPage = () => {
   const [form, setForm] = useState(emptyCollect);
   const [plans, setPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
+
+  const printReceipt = (receipt, printWindow) => {
+    try {
+      if (printFeeReceipt(receipt, printWindow)) return;
+    } catch (err) {
+      printWindow?.close();
+      toast.error(err.message || "Could not open the receipt for printing.");
+      return;
+    }
+
+    toast.error("Receipt saved. Allow pop-ups and use Print from the receipts list.");
+  };
 
   const refresh = async () => {
     const data = await api.get("/fees/receipts");
@@ -140,8 +156,9 @@ const ReceiptsPage = () => {
 
     setSaving(true);
     setError("");
+    const printWindow = openPrintWindow();
     try {
-      await api.post("/fees/payments", {
+      const result = await api.post("/fees/payments", {
         installmentId: Number(collect.installmentId),
         amount,
         date: collect.paidAt || undefined,
@@ -150,12 +167,18 @@ const ReceiptsPage = () => {
       setCreating(false);
       setCollect(emptyCollect);
       toast.success("Payment collected and receipt created");
+      printReceipt(result.receipt, printWindow);
       await refresh();
     } catch (err) {
+      printWindow?.close();
       toast.error(err.message);
     } finally {
       setSaving(false);
     }
+  };
+
+  const handlePrintReceipt = (receipt) => {
+    printReceipt(receipt);
   };
 
   const openEdit = (receipt) => {
@@ -335,6 +358,7 @@ const ReceiptsPage = () => {
         addButton={{ label: "Collect payment", onClick: openCreate }}
         emptyMessage="No receipts yet."
         rowActions={(receipt) => [
+          { label: "Print", icon: "printer", onClick: () => handlePrintReceipt(receipt) },
           { label: "Edit", icon: "edit", onClick: () => openEdit(receipt) },
         ]}
       />

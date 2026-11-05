@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useAuth } from "../auth/auth-context";
@@ -223,6 +224,20 @@ const Dashboard = () => {
             : "A snapshot of your recorded fee collections and expenses."
         }
       />
+
+      {isAdmin && (
+        <div className="card mb-5 flex flex-wrap items-center justify-between gap-4 p-4">
+          <div>
+            <p className="text-sm font-semibold text-content">User access</p>
+            <p className="mt-1 text-xs text-muted">
+              Assign additional module authorities to users.
+            </p>
+          </div>
+          <Link to="/users" className="btn btn-primary">
+            Manage users & authorities
+          </Link>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard

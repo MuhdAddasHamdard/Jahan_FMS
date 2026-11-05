@@ -1,0 +1,9 @@
+export const PERMISSIONS = {
+  CLASSES: "CLASSES",
+  STUDENTS: "STUDENTS",
+  FINANCE: "FINANCE",
+  REPORTS: "REPORTS",
+  STAFF: "STAFF",
+};
+
+export const PERMISSION_VALUES = Object.values(PERMISSIONS);

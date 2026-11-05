@@ -7,6 +7,7 @@ const publicUserSelect = {
   name: true,
   email: true,
   role: true,
+  permissions: true,
   avatarUrl: true,
   createdAt: true,
 };
@@ -63,6 +64,7 @@ export const loginUserService = async (email, password) => {
     name: user.name,
     email: user.email,
     role: user.role,
+    permissions: user.permissions,
     avatarUrl: user.avatarUrl,
     createdAt: user.createdAt,
   };
@@ -143,7 +145,7 @@ export const updateUserService = async (id, profileData) => {
 export const updateUserRole = async (id, role) => {
   const existing = await prisma.user.findUnique({
     where: { id: Number(id) },
-    select: { id: true },
+    select: { id: true, role: true },
   });
 
   if (!existing) {
@@ -152,11 +154,37 @@ export const updateUserRole = async (id, role) => {
 
   const user = await prisma.user.update({
     where: { id: Number(id) },
-    data: { role },
+    data: {
+      role,
+      ...(role === ROLES.ADMIN || existing.role === ROLES.ADMIN
+        ? { permissions: [] }
+        : {}),
+    },
     select: publicUserSelect,
   });
 
   return user;
+};
+
+export const updateUserPermissions = async (id, permissions) => {
+  const existing = await prisma.user.findUnique({
+    where: { id: Number(id) },
+    select: { id: true, role: true },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  if (existing.role === ROLES.ADMIN) {
+    return { error: "ADMIN_PERMISSIONS_IMMUTABLE" };
+  }
+
+  return prisma.user.update({
+    where: { id: Number(id) },
+    data: { permissions },
+    select: publicUserSelect,
+  });
 };
 
 export const deleteUser = async (id) => {

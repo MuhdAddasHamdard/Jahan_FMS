@@ -45,6 +45,10 @@ export const businessErrorToResponse = (error) => {
       status: 400,
       message: "Choose a teacher for this class",
     },
+    CLASS_TEACHER_ASSIGNMENT_FORBIDDEN: {
+      status: 403,
+      message: "Teachers can only create and manage classes assigned to themselves.",
+    },
     CLASS_DELETE_FORBIDDEN: {
       status: 403,
       message: "Only an admin or finance user can delete this class.",

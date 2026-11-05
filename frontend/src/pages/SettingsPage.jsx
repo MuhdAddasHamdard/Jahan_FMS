@@ -585,13 +585,13 @@ const SettingsPage = () => {
         <div className="mt-6">
           <SectionCard
             title="User & access management"
-            description="Manage system users and assign roles (admin, finance, teacher, student)."
+            description="Manage users, roles and additional module authorities. Access controls are available only to administrators."
           >
             <Link
               to="/users"
               className="inline-block rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
             >
-              Manage users
+              Manage users & authorities
             </Link>
           </SectionCard>
         </div>

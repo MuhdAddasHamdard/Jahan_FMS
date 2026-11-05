@@ -10,9 +10,13 @@ export const sharesInstituteData = (role) => SHARED_ROLES.includes(role);
  * edit. Teachers only touch the classes they teach and their students.
  */
 export const classScope = (role, userId) =>
-  sharesInstituteData(role) ? {} : { OR: [{ teacherId: userId }, { userId }] };
+  sharesInstituteData(role)
+    ? {}
+    : role === ROLES.TEACHER
+      ? { teacherId: userId }
+      : { userId };
 
 export const studentScope = (role, userId) =>
   sharesInstituteData(role)
     ? {}
-    : { OR: [{ userId }, { class: { teacherId: userId } }] };
+    : { OR: [{ userId }, { accountId: userId }, { class: { teacherId: userId } }] };

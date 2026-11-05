@@ -133,6 +133,25 @@ test("GET /classes lists classes with student counts", async () => {
   await prisma.class.delete({ where: { id: created.data.id } });
 });
 
+test("teachers only see classes assigned to them", async () => {
+  const otherTeacherClass = await prisma.class.create({
+    data: {
+      name: "Assigned to another teacher",
+      userId,
+      teacherId,
+    },
+  });
+
+  const { status, data } = await getJson(baseUrl, "/classes", token);
+  assert.equal(status, 200);
+  assert.equal(data.some((classRecord) => classRecord.id === otherTeacherClass.id), false);
+
+  const hidden = await getJson(baseUrl, `/classes/${otherTeacherClass.id}`, token);
+  assert.equal(hidden.status, 404);
+
+  await prisma.class.delete({ where: { id: otherTeacherClass.id } });
+});
+
 test("DELETE /classes removes the class", async () => {
   const created = await postJson(baseUrl, "/classes", { name: "Grade 11" }, token);
   const { status } = await deleteJson(`/classes/${created.data.id}`);
@@ -159,31 +178,44 @@ test("deleting a class detaches students without deleting them", async () => {
   await prisma.student.delete({ where: { id: student.id } });
 });
 
-test("POST /classes assigns a teacher", async () => {
-  const { status, data } = await postJson(
+test("teachers cannot assign a class to another teacher", async () => {
+  const rejected = await postJson(
     baseUrl,
     "/classes",
     { name: "Grade 13", section: "A", teacherId },
     token,
   );
 
-  assert.equal(status, 201);
-  assert.equal(data.teacher.id, teacherId);
+  assert.equal(rejected.status, 403);
 
-  await prisma.class.delete({ where: { id: data.id } });
+  const created = await postJson(baseUrl, "/classes", { name: "Grade 13", section: "A" }, token);
+  assert.equal(created.status, 201);
+  assert.equal(created.data.teacher.id, userId);
+
+  await prisma.class.delete({ where: { id: created.data.id } });
 });
 
-test("PATCH /classes can change or clear the teacher", async () => {
+test("teachers cannot change or clear their class assignment", async () => {
   const created = await postJson(
     baseUrl,
     "/classes",
-    { name: "Grade 14", teacherId },
+    { name: "Grade 14" },
     token,
   );
 
-  const changed = await patchJson(`/classes/${created.data.id}`, { teacherId: null });
-  assert.equal(changed.status, 200);
-  assert.equal(changed.data.teacher, null);
+  const changed = await patchJson(
+    `/classes/${created.data.id}`,
+    { teacherId },
+  );
+  const cleared = await patchJson(`/classes/${created.data.id}`, { teacherId: null });
+  assert.equal(changed.status, 403);
+  assert.equal(cleared.status, 403);
+
+  const record = await prisma.class.findUnique({
+    where: { id: created.data.id },
+    select: { teacherId: true },
+  });
+  assert.equal(record.teacherId, userId);
 
   await prisma.class.delete({ where: { id: created.data.id } });
 });

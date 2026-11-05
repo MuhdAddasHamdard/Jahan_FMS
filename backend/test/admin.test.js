@@ -17,6 +17,7 @@ let adminId;
 let adminEmail;
 let employeeToken;
 let employeeEmail;
+let employeeId;
 
 const patchJson = async (path, body, token) => {
   const response = await fetch(`${baseUrl}${path}`, {
@@ -77,6 +78,7 @@ before(async () => {
     password: "password123",
   });
   employeeEmail = employee.data.email;
+  employeeId = employee.data.id;
 
   const employeeLogin = await postJson(baseUrl, "/users/login", {
     email: employeeEmail,
@@ -145,6 +147,56 @@ test("PATCH /users/:id/role is forbidden for non-admin users", async () => {
   assert.equal(status, 403);
 
   await prisma.user.delete({ where: { id: target.data.id } });
+});
+
+test("PATCH /users/:id/permissions lets admins grant and revoke module access", async () => {
+  const granted = await patchJson(
+    `/users/${employeeId}/permissions`,
+    { permissions: ["CLASSES"] },
+    adminToken,
+  );
+  assert.equal(granted.status, 200);
+  assert.deepEqual(granted.data.permissions, ["CLASSES"]);
+
+  const classAccess = await getJson(baseUrl, "/classes", employeeToken);
+  assert.equal(classAccess.status, 200);
+
+  const revoked = await patchJson(
+    `/users/${employeeId}/permissions`,
+    { permissions: [] },
+    adminToken,
+  );
+  assert.equal(revoked.status, 200);
+  assert.deepEqual(revoked.data.permissions, []);
+
+  const denied = await getJson(baseUrl, "/classes", employeeToken);
+  assert.equal(denied.status, 403);
+});
+
+test("PATCH /users/:id/permissions is admin-only and validates permission names", async () => {
+  const forbidden = await patchJson(
+    `/users/${employeeId}/permissions`,
+    { permissions: ["CLASSES"] },
+    employeeToken,
+  );
+  assert.equal(forbidden.status, 403);
+
+  const invalid = await patchJson(
+    `/users/${employeeId}/permissions`,
+    { permissions: ["ROOT_ACCESS"] },
+    adminToken,
+  );
+  assert.equal(invalid.status, 400);
+});
+
+test("PATCH /users/:id/permissions does not change administrator access", async () => {
+  const { status, data } = await patchJson(
+    `/users/${adminId}/permissions`,
+    { permissions: [] },
+    adminToken,
+  );
+  assert.equal(status, 400);
+  assert.match(data.message, /ADMIN role/);
 });
 
 test("DELETE /users/:id with ADMIN deletes the user", async () => {

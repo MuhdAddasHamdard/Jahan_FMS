@@ -1,7 +1,8 @@
 import express from "express";
 import { authenticateUser } from "../middleware/auth.middleware";
-import { authorizeRole } from "../middleware/role.middleware";
+import { authorizeRoleOrPermission } from "../middleware/role.middleware";
 import { ROLES } from "../constants/roles";
+import { PERMISSIONS } from "../constants/permissions";
 import {
   validateStudent,
   validateStudentUpdate,
@@ -22,7 +23,12 @@ const router = express.Router();
 
 router.use(authenticateUser);
 
-const staffOnly = authorizeRole(ROLES.ADMIN, ROLES.FINANCE, ROLES.TEACHER);
+const staffOnly = authorizeRoleOrPermission(
+  PERMISSIONS.STUDENTS,
+  ROLES.ADMIN,
+  ROLES.FINANCE,
+  ROLES.TEACHER,
+);
 
 router.get("/", staffOnly, getStudents);
 router.post("/", staffOnly, validateStudent, createStudentController);

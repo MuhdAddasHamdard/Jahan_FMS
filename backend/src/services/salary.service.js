@@ -141,7 +141,7 @@ export const createSalaryPayment = async (
         notes: notes ?? null,
         userId,
       },
-      include: { staff: { select: { id: true, staffNo: true, name: true } } },
+      include: { staff: { select: staffSelection } },
     });
 
     return {
@@ -150,6 +150,7 @@ export const createSalaryPayment = async (
       amount: toNumber(payment.amount),
       periodMonth: payment.periodMonth,
       paidOn: payment.paidOn,
+      notes: payment.notes,
     };
   });
 
@@ -180,7 +181,7 @@ export const updateSalaryPayment = async (id, { periodMonth, amount, paidOn }) =
         amount: amount !== undefined ? Number(amount) : undefined,
         paidOn: paidOn ? new Date(paidOn) : undefined,
       },
-      include: { staff: { select: { id: true, staffNo: true, name: true } } },
+      include: { staff: { select: staffSelection } },
     });
 
     return {
@@ -189,6 +190,7 @@ export const updateSalaryPayment = async (id, { periodMonth, amount, paidOn }) =
       amount: toNumber(updated.amount),
       periodMonth: updated.periodMonth,
       paidOn: updated.paidOn,
+      notes: updated.notes,
     };
   });
 

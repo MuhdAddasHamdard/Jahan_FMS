@@ -5,6 +5,7 @@ import {
   getUserById,
   loginUserService,
   updateUserRole,
+  updateUserPermissions,
   deleteUser,
   updateCurrentUserService,
   updateUserService,
@@ -198,6 +199,29 @@ export const setUserRole = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({
+      message: "Something went wrong on the server",
+    });
+  }
+};
+
+export const setUserPermissions = async (req, res) => {
+  try {
+    const user = await updateUserPermissions(req.params.id, req.body.permissions);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.error === "ADMIN_PERMISSIONS_IMMUTABLE") {
+      return res.status(400).json({
+        message: "Administrator access is managed by the ADMIN role.",
+      });
+    }
+
+    return res.status(200).json(user);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
       message: "Something went wrong on the server",
     });
   }

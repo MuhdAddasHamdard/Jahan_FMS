@@ -10,6 +10,7 @@ import { FormField, inputClass, errorInputClass } from "../components/FormField"
 import { useToast } from "../hooks/useToast";
 import { formatDate } from "../utils/format";
 import { passwordLengthError } from "../utils/password";
+import { PERMISSION_OPTIONS } from "../auth/permissions";
 
 const ROLES = ["ADMIN", "FINANCE", "TEACHER", "STUDENT"];
 
@@ -29,6 +30,9 @@ const UsersPage = () => {
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [accessUser, setAccessUser] = useState(null);
+  const [accessPermissions, setAccessPermissions] = useState([]);
+  const [permissionsBusy, setPermissionsBusy] = useState(false);
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState({ name: "", email: "", password: "" });
   const [creating, setCreating] = useState(false);
@@ -94,6 +98,31 @@ const UsersPage = () => {
       toast.error(err.message);
     } finally {
       setSavingId(null);
+    }
+  };
+
+  const openAccess = (targetUser) => {
+    if (targetUser.role === "ADMIN") return;
+    setAccessUser(targetUser);
+    setAccessPermissions(targetUser.permissions ?? []);
+  };
+
+  const handlePermissionsUpdate = async (event) => {
+    event.preventDefault();
+    setPermissionsBusy(true);
+    try {
+      const updated = await api.patch(`/users/${accessUser.id}/permissions`, {
+        permissions: accessPermissions,
+      });
+      setUsers((current) =>
+        current.map((user) => (user.id === updated.id ? { ...user, ...updated } : user)),
+      );
+      setAccessUser(null);
+      toast.success("User authorities updated");
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setPermissionsBusy(false);
     }
   };
 
@@ -253,6 +282,25 @@ const UsersPage = () => {
       },
     },
     {
+      key: "permissions",
+      header: "Authorities",
+      render: (user) =>
+        user.role === "ADMIN" ? (
+          <span className="text-xs font-medium text-violet-700">All access</span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => openAccess(user)}
+            className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-teal-500 hover:text-teal-700"
+          >
+            Manage access
+            <span className="ml-1 text-slate-500">
+              ({(user.permissions ?? []).length})
+            </span>
+          </button>
+        ),
+    },
+    {
       key: "createdAt",
       header: "Joined",
       align: "right",
@@ -382,6 +430,74 @@ const UsersPage = () => {
               aria-invalid={Boolean(passwordError)}
             />
           </FormField>
+        </form>
+      </Modal>
+
+      <Modal
+        open={Boolean(accessUser)}
+        onClose={() => setAccessUser(null)}
+        title="Manage authorities"
+        description={
+          accessUser
+            ? `Grant additional module access to ${accessUser.name}. Their role-based access remains unchanged.`
+            : undefined
+        }
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setAccessUser(null)}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="user-authorities-form"
+              disabled={permissionsBusy}
+              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+            >
+              {permissionsBusy ? "Saving..." : "Save authorities"}
+            </button>
+          </>
+        }
+      >
+        <form
+          id="user-authorities-form"
+          onSubmit={handlePermissionsUpdate}
+          className="space-y-3"
+        >
+          <p className="text-xs text-slate-500">
+            These grants add to the access already provided by the user&apos;s role.
+            User and institute settings remain administrator-only.
+          </p>
+          {PERMISSION_OPTIONS.map((permission) => (
+            <label
+              key={permission.value}
+              className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-3 transition hover:border-teal-300"
+            >
+              <input
+                type="checkbox"
+                checked={accessPermissions.includes(permission.value)}
+                onChange={(event) =>
+                  setAccessPermissions((current) =>
+                    event.target.checked
+                      ? [...current, permission.value]
+                      : current.filter((value) => value !== permission.value),
+                  )
+                }
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-slate-800">
+                  {permission.label}
+                </span>
+                <span className="mt-0.5 block text-xs text-slate-500">
+                  {permission.description}
+                </span>
+              </span>
+            </label>
+          ))}
         </form>
       </Modal>
 

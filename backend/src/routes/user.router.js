@@ -1,6 +1,14 @@
 import express from "express";
-import { validateUser, validateProfileUpdate, validateManagedUserUpdate } from "../middleware/user.validation";
-import { authorizeRole } from "../middleware/role.middleware";
+import {
+  validateUser,
+  validateProfileUpdate,
+  validateManagedUserUpdate,
+  validateUserPermissions,
+} from "../middleware/user.validation";
+import {
+  authorizeRole,
+  authorizeRoleOrPermission,
+} from "../middleware/role.middleware";
 import { validateRole } from "../middleware/role.validation";
 import {
   getUsers,
@@ -12,18 +20,20 @@ import {
   updateCurrentUser,
   updateManagedUser,
   setUserRole,
+  setUserPermissions,
   removeUser,
 } from "../controllers/user.controller";
 
 import { authenticateUser } from "../middleware/auth.middleware";
 import { ROLES } from "../constants/roles";
+import { PERMISSIONS } from "../constants/permissions";
 const router = express.Router();
 
 router.get("/", authenticateUser, authorizeRole(ROLES.ADMIN), getUsers);
 router.get(
   "/teachers",
   authenticateUser,
-  authorizeRole(ROLES.ADMIN, ROLES.FINANCE),
+  authorizeRoleOrPermission(PERMISSIONS.CLASSES, ROLES.ADMIN, ROLES.FINANCE),
   getTeachersController,
 );
 router.post("/", validateUser, createUser);
@@ -48,6 +58,13 @@ router.patch(
   authorizeRole(ROLES.ADMIN),
   validateRole,
   setUserRole,
+);
+router.patch(
+  "/:id/permissions",
+  authenticateUser,
+  authorizeRole(ROLES.ADMIN),
+  validateUserPermissions,
+  setUserPermissions,
 );
 router.patch(
   "/:id",

@@ -97,13 +97,22 @@ const resolveTeacherId = async (teacherId) => {
 };
 
 export const createClass = async (userId, role, classData) => {
+  if (
+    role === ROLES.TEACHER &&
+    classData.teacherId !== undefined &&
+    classData.teacherId !== null &&
+    Number(classData.teacherId) !== userId
+  ) {
+    return { error: "CLASS_TEACHER_ASSIGNMENT_FORBIDDEN" };
+  }
+
   let teacherId = await resolveTeacherId(classData.teacherId);
 
   if (teacherId === undefined) {
     return { error: "TEACHER_NOT_FOUND" };
   }
 
-  if (!teacherId && role === ROLES.TEACHER) {
+  if (role === ROLES.TEACHER) {
     teacherId = userId;
   }
 
@@ -135,6 +144,15 @@ export const updateClass = async (userId, role, id, classData) => {
 
   if (!existing) {
     return null;
+  }
+
+  if (
+    role === ROLES.TEACHER &&
+    (classData.clearTeacher ||
+      (classData.teacherId !== undefined &&
+        Number(classData.teacherId) !== userId))
+  ) {
+    return { error: "CLASS_TEACHER_ASSIGNMENT_FORBIDDEN" };
   }
 
   let teacherId;

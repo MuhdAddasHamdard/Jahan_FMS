@@ -1,7 +1,8 @@
 import express from "express";
 import { authenticateUser } from "../middleware/auth.middleware";
-import { authorizeRole } from "../middleware/role.middleware";
+import { authorizeRoleOrPermission } from "../middleware/role.middleware";
 import { ROLES } from "../constants/roles";
+import { PERMISSIONS } from "../constants/permissions";
 import {
   validateFeeType,
   validateFeeTypeUpdate,
@@ -29,7 +30,10 @@ import {
 
 const router = express.Router();
 
-router.use(authenticateUser, authorizeRole(ROLES.ADMIN, ROLES.FINANCE));
+router.use(
+  authenticateUser,
+  authorizeRoleOrPermission(PERMISSIONS.FINANCE, ROLES.ADMIN, ROLES.FINANCE),
+);
 
 router.get("/types", getFeeTypes);
 router.post("/types", validateFeeType, createFeeTypeController);

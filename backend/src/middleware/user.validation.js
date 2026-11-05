@@ -1,3 +1,5 @@
+import { PERMISSION_VALUES } from "../constants/permissions";
+
 const MAX_AVATAR_LENGTH = 1_500_000;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -26,6 +28,30 @@ export const validateManagedUserUpdate = (req, res, next) => {
 
   if (password !== undefined && String(password).length < 8) {
     return res.status(400).json({ message: "password must be at least 8 characters long" });
+  }
+
+  next();
+};
+
+export const validateUserPermissions = (req, res, next) => {
+  const { permissions } = req.body;
+
+  if (Object.keys(req.body).length !== 1 || !Array.isArray(permissions)) {
+    return res.status(400).json({ message: "Provide a permissions array" });
+  }
+
+  if (
+    permissions.some(
+      (permission) =>
+        typeof permission !== "string" ||
+        !PERMISSION_VALUES.includes(permission),
+    )
+  ) {
+    return res.status(400).json({ message: "One or more permissions are invalid" });
+  }
+
+  if (new Set(permissions).size !== permissions.length) {
+    return res.status(400).json({ message: "Permissions must not contain duplicates" });
   }
 
   next();

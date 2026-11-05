@@ -10,6 +10,7 @@ import DataTable from "../components/DataTable";
 import { FormField, inputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
 import { formatNumber } from "../utils/format";
+import { PERMISSIONS } from "../auth/permissions";
 
 const DAY_NAMES = [
   "Sunday",
@@ -611,9 +612,11 @@ const ClassDetailPanel = ({ classRecord }) => {
 };
 
 const ClassesPage = () => {
-  const { isAdmin, isFinance } = useAuth();
-  const canAssignTeacher = isAdmin || isFinance;
-  const canDeleteClass = isAdmin || isFinance;
+  const { isAdmin, isFinance, isTeacher, hasPermission } = useAuth();
+  const canAssignTeacher =
+    isAdmin || isFinance || (hasPermission(PERMISSIONS.CLASSES) && !isTeacher);
+  const canDeleteClass =
+    isAdmin || isFinance || hasPermission(PERMISSIONS.CLASSES);
   const toast = useToast();
   const [classList, setClassList] = useState([]);
   const [teachers, setTeachers] = useState([]);
@@ -680,11 +683,14 @@ const ClassesPage = () => {
     setSubmitting(true);
     setError("");
     try {
-      await api.post("/classes", {
+      const payload = {
         name: draft.name.trim(),
         section: draft.section.trim() || null,
-        teacherId: draft.teacherId ? Number(draft.teacherId) : null,
-      });
+      };
+      if (canAssignTeacher) {
+        payload.teacherId = draft.teacherId ? Number(draft.teacherId) : null;
+      }
+      await api.post("/classes", payload);
       setCreating(false);
       setDraft(emptyClass);
       toast.success("Class created");
@@ -714,13 +720,16 @@ const ClassesPage = () => {
 
     setSubmitting(true);
     try {
-      await api.patch(`/classes/${editingClass.id}`, {
+      const payload = {
         name: editClassValue.name.trim(),
         section: editClassValue.section.trim() || null,
-        teacherId: editClassValue.teacherId
+      };
+      if (canAssignTeacher) {
+        payload.teacherId = editClassValue.teacherId
           ? Number(editClassValue.teacherId)
-          : null,
-      });
+          : null;
+      }
+      await api.patch(`/classes/${editingClass.id}`, payload);
       setEditingClass(null);
       toast.success("Class updated");
       await refreshClasses();
@@ -794,7 +803,11 @@ const ClassesPage = () => {
     <div>
       <PageHeader
         title="Classes"
-        description="Manage classes, assigned teachers, schedules and course materials."
+        description={
+          isTeacher
+            ? "View and manage your classes, schedules and course materials."
+            : "Manage classes, assigned teachers, schedules and course materials."
+        }
       />
 
       {error && !creating && (
