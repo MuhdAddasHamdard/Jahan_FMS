@@ -3,7 +3,11 @@ import { STAFF_DESIGNATIONS, PERIOD_MONTH_PATTERN } from "../constants/staff";
 const isPositiveNumber = (value) => Number.isFinite(Number(value)) && Number(value) > 0;
 
 export const validateStaff = (req, res, next) => {
-  const { staffNo, name, designation, salary } = req.body;
+  const { staffNo, name, designation } = req.body;
+
+  if ("salary" in req.body) {
+    return res.status(400).json({ message: "Manage salary rates in the Salaries section" });
+  }
 
   if (!staffNo || typeof staffNo !== "string" || staffNo.trim().length === 0) {
     return res.status(400).json({ message: "Staff number is required" });
@@ -19,15 +23,11 @@ export const validateStaff = (req, res, next) => {
     });
   }
 
-  if (salary !== undefined && !isPositiveNumber(salary)) {
-    return res.status(400).json({ message: "salary must be a positive number" });
-  }
-
   next();
 };
 
 export const validateStaffUpdate = (req, res, next) => {
-  const fields = ["staffNo", "name", "designation", "phone", "email", "salary"];
+  const fields = ["staffNo", "name", "designation", "phone", "email"];
   const keys = Object.keys(req.body);
 
   if (keys.length === 0) {
@@ -57,8 +57,50 @@ export const validateStaffUpdate = (req, res, next) => {
     });
   }
 
-  if (req.body.salary !== undefined && !isPositiveNumber(req.body.salary)) {
-    return res.status(400).json({ message: "salary must be a positive number" });
+  next();
+};
+
+const isValidDateOnly = (value) => {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+
+export const validateStaffSalary = (req, res, next) => {
+  const { staffId, amount, effectiveFrom } = req.body;
+
+  if (!staffId || !Number.isInteger(Number(staffId)) || Number(staffId) <= 0) {
+    return res.status(400).json({ message: "staffId is required" });
+  }
+  if (!isPositiveNumber(amount)) {
+    return res.status(400).json({ message: "amount must be a positive number" });
+  }
+  if (!isValidDateOnly(effectiveFrom)) {
+    return res.status(400).json({ message: "effectiveFrom must be a valid YYYY-MM-DD date" });
+  }
+
+  next();
+};
+
+export const validateStaffSalaryUpdate = (req, res, next) => {
+  const { amount, effectiveFrom } = req.body;
+  const keys = Object.keys(req.body);
+
+  if (keys.length === 0) {
+    return res.status(400).json({ message: "Nothing to update" });
+  }
+  for (const key of keys) {
+    if (!["amount", "effectiveFrom"].includes(key)) {
+      return res.status(400).json({ message: `Field "${key}" is not updatable` });
+    }
+  }
+  if (amount !== undefined && !isPositiveNumber(amount)) {
+    return res.status(400).json({ message: "amount must be a positive number" });
+  }
+  if (effectiveFrom !== undefined && !isValidDateOnly(effectiveFrom)) {
+    return res.status(400).json({ message: "effectiveFrom must be a valid YYYY-MM-DD date" });
   }
 
   next();

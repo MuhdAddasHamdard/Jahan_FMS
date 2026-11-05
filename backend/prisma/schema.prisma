@@ -25,6 +25,7 @@ model User {
   receipts     Receipt[]
   refunds      Refund[]
   staff        Staff[]
+  staffSalaries StaffSalary[]
   salaryPayments SalaryPayment[]
   scheduleEntries ClassSchedule[] @relation("ScheduleAuthor")
   materials    CourseMaterial[]   @relation("MaterialAuthor")
@@ -177,14 +178,29 @@ model Staff {
   designation  String           @default("TEACHER")
   phone        String?
   email        String?
-  salary       Decimal          @default(0) @db.Decimal(12, 2)
   userId       Int
   user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salaryRates  StaffSalary[]
   payments     SalaryPayment[]
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
   @@unique([userId, staffNo])
+  @@index([userId])
+}
+
+model StaffSalary {
+  id            Int      @id @default(autoincrement())
+  staffId       Int
+  staff         Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  amount        Decimal  @db.Decimal(12, 2)
+  effectiveFrom DateTime @db.Date
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+
+  @@unique([staffId, effectiveFrom])
+  @@index([staffId, effectiveFrom])
   @@index([userId])
 }
 

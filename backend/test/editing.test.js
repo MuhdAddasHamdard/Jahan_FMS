@@ -247,13 +247,13 @@ test("PATCH /salary-payments/:id updates period, amount and date", async () => {
   const staff = await post("/staff", {
     staffNo: `STF-${between(1000, 9999)}`,
     name: "Salary Edit Staff",
-    salary: 40000,
   });
   assert.equal(staff.status, 201);
 
   const payment = await post("/salary-payments", {
     staffId: staff.data.id,
     periodMonth: "2026-01",
+    amount: 40000,
   });
   assert.equal(payment.status, 201);
 

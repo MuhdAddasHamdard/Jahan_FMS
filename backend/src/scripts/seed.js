@@ -144,7 +144,16 @@ if (existingClasses === 0) {
   });
 
   const staff = await prisma.staff.create({
-    data: { staffNo: "STF-DEMO-001", name: "Ayesha Siddiqui", designation: "TEACHER", salary: 45000, email: "ayesha@example.com", userId: admin.id },
+    data: { staffNo: "STF-DEMO-001", name: "Ayesha Siddiqui", designation: "TEACHER", email: "ayesha@example.com", userId: admin.id },
+  });
+
+  await prisma.staffSalary.create({
+    data: {
+      staffId: staff.id,
+      amount: 45000,
+      effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+      userId: admin.id,
+    },
   });
 
   await prisma.salaryPayment.create({

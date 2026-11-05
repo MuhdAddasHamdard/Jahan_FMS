@@ -116,6 +116,10 @@ export const businessErrorToResponse = (error) => {
       status: 400,
       message: "Cannot delete: this staff already has salary payments",
     },
+    SALARY_RATE_NOT_FOUND: {
+      status: 400,
+      message: "No salary rate is effective for that month. Add a salary rate or enter an amount.",
+    },
   };
 
   return map[error] ?? { status: 400, message: "Invalid request" };

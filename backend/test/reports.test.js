@@ -89,13 +89,13 @@ test("GET /reports/summary computes income, refunds, salaries and expenses", asy
   const staff = await postJson(
     baseUrl,
     "/staff",
-    { staffNo: `ST-${between(1000, 9999)}`, name: "Paid Teacher", salary: 300 },
+    { staffNo: `ST-${between(1000, 9999)}`, name: "Paid Teacher" },
     token,
   );
   const salary = await postJson(
     baseUrl,
     "/salary-payments",
-    { staffId: staff.data.id, periodMonth: "2026-09" },
+    { staffId: staff.data.id, periodMonth: "2026-09", amount: 300 },
     token,
   );
   assert.equal(salary.status, 201);

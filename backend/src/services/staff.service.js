@@ -1,7 +1,6 @@
 import bcrypt from "bcrypt";
 import { randomBytes } from "node:crypto";
 import prisma from "../prisma";
-import { toNumber } from "../utils/money";
 import { ROLES } from "../constants/roles";
 
 // A staff member with the TEACHER designation should be pickable as a class
@@ -47,7 +46,6 @@ const formatStaff = (staff) => ({
   designation: staff.designation,
   phone: staff.phone,
   email: staff.email,
-  salary: toNumber(staff.salary),
   createdAt: staff.createdAt,
   updatedAt: staff.updatedAt,
 });
@@ -77,7 +75,6 @@ export const createStaff = async (userId, staffData) => {
       designation: staffData.designation ?? "TEACHER",
       phone: staffData.phone ?? null,
       email: staffData.email ?? null,
-      salary: staffData.salary ?? 0,
       userId,
     },
   });
@@ -109,7 +106,6 @@ export const updateStaff = async (userId, id, staffData) => {
       designation: staffData.designation,
       phone: staffData.phone,
       email: staffData.email,
-      salary: staffData.salary !== undefined ? Number(staffData.salary) : undefined,
     },
   });
 
@@ -141,143 +137,6 @@ export const deleteStaff = async (userId, id) => {
   }
 
   await prisma.staff.delete({ where: { id: Number(id) } });
-
-  return true;
-};
-
-export const getSalaryPayments = async (userId, filters = {}) => {
-  const { staffId } = filters;
-
-  const where = {};
-
-  if (staffId && !Number.isNaN(Number(staffId))) {
-    where.staffId = Number(staffId);
-  }
-
-  const payments = await prisma.salaryPayment.findMany({
-    where,
-    include: {
-      staff: { select: { id: true, staffNo: true, name: true, designation: true } },
-    },
-    orderBy: { paidOn: "desc" },
-  });
-
-  return payments.map((payment) => ({
-    id: payment.id,
-    staff: payment.staff,
-    amount: toNumber(payment.amount),
-    periodMonth: payment.periodMonth,
-    paidOn: payment.paidOn,
-    notes: payment.notes,
-    createdAt: payment.createdAt,
-  }));
-};
-
-export const createSalaryPayment = async (
-  userId,
-  { staffId, periodMonth, amount, paidOn, notes },
-) => {
-  return prisma.$transaction(async (tx) => {
-    const staff = await tx.staff.findFirst({
-      where: { id: Number(staffId) },
-      select: { id: true, name: true, staffNo: true, salary: true },
-    });
-
-    if (!staff) {
-      return { error: "STAFF_NOT_FOUND" };
-    }
-
-    const existing = await tx.salaryPayment.findFirst({
-      where: { staffId: staff.id, periodMonth },
-      select: { id: true },
-    });
-
-    if (existing) {
-      return { error: "ALREADY_PAID" };
-    }
-
-    const payAmount = amount !== undefined ? Number(amount) : Number(staff.salary);
-    const paidOnDate = paidOn ? new Date(paidOn) : new Date();
-
-    const payment = await tx.salaryPayment.create({
-      data: {
-        staffId: staff.id,
-        amount: payAmount,
-        periodMonth,
-        paidOn: paidOnDate,
-        notes: notes ?? null,
-        userId,
-      },
-      include: {
-        staff: { select: { id: true, staffNo: true, name: true } },
-      },
-    });
-
-    return {
-      id: payment.id,
-      staff: payment.staff,
-      amount: toNumber(payment.amount),
-      periodMonth: payment.periodMonth,
-      paidOn: payment.paidOn,
-    };
-  });
-};
-
-export const updateSalaryPayment = async (userId, id, { periodMonth, amount, paidOn }) => {
-  return prisma.$transaction(async (tx) => {
-    const payment = await tx.salaryPayment.findFirst({
-      where: { id: Number(id) },
-      select: { id: true, staffId: true },
-    });
-
-    if (!payment) {
-      return null;
-    }
-
-    if (periodMonth !== undefined) {
-      const clash = await tx.salaryPayment.findFirst({
-        where: { staffId: payment.staffId, periodMonth, id: { not: payment.id } },
-        select: { id: true },
-      });
-
-      if (clash) {
-        return { error: "ALREADY_PAID" };
-      }
-    }
-
-    const updated = await tx.salaryPayment.update({
-      where: { id: payment.id },
-      data: {
-        periodMonth,
-        amount: amount !== undefined ? Number(amount) : undefined,
-        paidOn: paidOn ? new Date(paidOn) : undefined,
-      },
-      include: {
-        staff: { select: { id: true, staffNo: true, name: true } },
-      },
-    });
-
-    return {
-      id: updated.id,
-      staff: updated.staff,
-      amount: toNumber(updated.amount),
-      periodMonth: updated.periodMonth,
-      paidOn: updated.paidOn,
-    };
-  });
-};
-
-export const deleteSalaryPayment = async (userId, id) => {
-  const payment = await prisma.salaryPayment.findFirst({
-    where: { id: Number(id) },
-    select: { id: true },
-  });
-
-  if (!payment) {
-    return null;
-  }
-
-  await prisma.salaryPayment.delete({ where: { id: payment.id } });
 
   return true;
 };

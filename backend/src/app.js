@@ -6,7 +6,8 @@ import classRouter from "./routes/class.router";
 import studentRouter from "./routes/student.router";
 import feeRouter from "./routes/fee.router";
 import refundRouter from "./routes/refund.router";
-import staffRouter, { salaryRouter } from "./routes/staff.router";
+import staffRouter from "./routes/staff.router";
+import salaryRouter, { salaryPaymentRouter } from "./routes/salary.router";
 import expenseRouter from "./routes/expense.router";
 import settingsRouter from "./routes/settings.router";
 
@@ -21,7 +22,8 @@ app.use("/students", studentRouter);
 app.use("/fees", feeRouter);
 app.use("/refunds", refundRouter);
 app.use("/staff", staffRouter);
-app.use("/salary-payments", salaryRouter);
+app.use("/salaries", salaryRouter);
+app.use("/salary-payments", salaryPaymentRouter);
 app.use("/expenses", expenseRouter);
 app.use("/settings", settingsRouter);
 

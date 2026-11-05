@@ -19,6 +19,7 @@ import FeePlansPage from "../pages/FeePlansPage";
 import ReceiptsPage from "../pages/ReceiptsPage";
 import RefundsPage from "../pages/RefundsPage";
 import StaffPage from "../pages/StaffPage";
+import SalariesPage from "../pages/SalariesPage";
 import InstituteReportsPage from "../pages/InstituteReportsPage";
 import SettingsPage from "../pages/SettingsPage";
 
@@ -134,6 +135,14 @@ const AppRoutes = () => {
                 element={
                   <RoleRoute roles={financeRoles}>
                     <StaffPage />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/salaries"
+                element={
+                  <RoleRoute roles={financeRoles}>
+                    <SalariesPage />
                   </RoleRoute>
                 }
               />

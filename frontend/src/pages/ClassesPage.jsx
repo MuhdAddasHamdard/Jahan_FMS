@@ -866,7 +866,7 @@ const ClassesPage = () => {
           {canAssignTeacher && teachers.length === 0 && (
             <Alert
               type="info"
-              message="No teachers available yet. Add a teacher under Staff & Salaries or User management, then create the class."
+              message="No teachers available yet. Add a teacher under Staff or User management, then create the class."
             />
           )}
           <ClassFields
