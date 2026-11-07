@@ -86,6 +86,7 @@ const StudentPortal = () => {
           ...receipt,
           student,
           feeType: plan.feeType,
+          discountAmount: plan.discountAmount,
         })),
     )
     .sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt));
@@ -247,7 +248,9 @@ const StudentPortal = () => {
                         {plan.feeType.name}
                       </p>
                       <p className="text-xs text-slate-500">
-                        Total {formatNumber(plan.totalAmount)} · Paid{" "}
+                        Total {formatNumber(plan.grossAmount)} · Discount{" "}
+                        {formatNumber(plan.discountAmount)} · Due{" "}
+                        {formatNumber(plan.totalAmount)} · Paid{" "}
                         {formatNumber(plan.paidAmount)} · Balance{" "}
                         {formatNumber(plan.balance)}
                       </p>

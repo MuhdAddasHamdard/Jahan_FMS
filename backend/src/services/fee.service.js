@@ -20,6 +20,18 @@ const formatInstallment = (installment) => ({
   status: installment.status,
 });
 
+const money = (amount) => Math.round((Number(amount) + Number.EPSILON) * 100) / 100;
+
+const getDiscountAmount = (totalAmount, discountType, discountValue) => {
+  if (discountType === "PERCENTAGE") {
+    return money((totalAmount * discountValue) / 100);
+  }
+  if (discountType === "FIXED") {
+    return money(discountValue);
+  }
+  return 0;
+};
+
 export const installmentsFor = (totalAmount, installmentCount) => {
   const count = Math.max(1, Number(installmentCount) || 1);
 
@@ -135,12 +147,17 @@ export const getAllFeePlans = async (userId) => {
     );
     const totalAmount = toNumber(plan.totalAmount);
     const balance = totalAmount - paidAmount;
+    const discountAmount = toNumber(plan.discountAmount);
 
     return {
       id: plan.id,
       student: plan.student,
       feeType: plan.feeType,
       totalAmount,
+      grossAmount: money(totalAmount + discountAmount),
+      discountType: plan.discountType,
+      discountValue: toNumber(plan.discountValue),
+      discountAmount,
       installmentCount: plan.installmentCount,
       paidAmount,
       balance,
@@ -165,12 +182,17 @@ const formatPlan = (plan) => {
   );
   const totalAmount = toNumber(plan.totalAmount);
   const balance = totalAmount - paidAmount;
+  const discountAmount = toNumber(plan.discountAmount);
 
   return {
     id: plan.id,
     student: plan.student,
     feeType: plan.feeType,
     totalAmount,
+    grossAmount: money(totalAmount + discountAmount),
+    discountType: plan.discountType,
+    discountValue: toNumber(plan.discountValue),
+    discountAmount,
     installmentCount: plan.installmentCount,
     paidAmount,
     balance,
@@ -193,7 +215,17 @@ export const getFeePlanById = async (userId, id) => {
   return formatPlan(plan);
 };
 
-export const createFeePlan = async (userId, { studentId, feeTypeId, totalAmount, installmentCount }) => {
+export const createFeePlan = async (
+  userId,
+  {
+    studentId,
+    feeTypeId,
+    totalAmount,
+    installmentCount,
+    discountType = "NONE",
+    discountValue = 0,
+  },
+) => {
   return prisma.$transaction(async (tx) => {
     const student = await tx.student.findFirst({
       where: { id: Number(studentId) },
@@ -222,7 +254,17 @@ export const createFeePlan = async (userId, { studentId, feeTypeId, totalAmount,
       return { error: "PLAN_EXISTS" };
     }
 
-    const planTotal = totalAmount !== undefined ? Number(totalAmount) : Number(feeType.amount);
+    const grossAmount =
+      totalAmount !== undefined ? money(totalAmount) : money(feeType.amount);
+    const discountAmount = getDiscountAmount(
+      grossAmount,
+      discountType,
+      Number(discountValue),
+    );
+    if (discountAmount > grossAmount) {
+      return { error: "DISCOUNT_EXCEEDS_TOTAL" };
+    }
+    const planTotal = money(grossAmount - discountAmount);
     const count = installmentCount !== undefined ? Number(installmentCount) : 1;
     const schedule = installmentsFor(planTotal, count);
 
@@ -231,6 +273,9 @@ export const createFeePlan = async (userId, { studentId, feeTypeId, totalAmount,
         studentId: student.id,
         feeTypeId: feeType.id,
         totalAmount: planTotal,
+        discountType,
+        discountValue: discountType === "NONE" ? 0 : Number(discountValue),
+        discountAmount,
         installmentCount: count,
         userId,
         installments: {
@@ -248,11 +293,23 @@ export const createFeePlan = async (userId, { studentId, feeTypeId, totalAmount,
   });
 };
 
-export const updateFeePlan = async (userId, id, { feeTypeId, totalAmount, installmentCount }) => {
+export const updateFeePlan = async (
+  userId,
+  id,
+  { feeTypeId, totalAmount, installmentCount, discountType, discountValue },
+) => {
   return prisma.$transaction(async (tx) => {
     const plan = await tx.studentFee.findFirst({
       where: { id: Number(id) },
-      select: { id: true, feeTypeId: true, totalAmount: true, installmentCount: true },
+      select: {
+        id: true,
+        feeTypeId: true,
+        totalAmount: true,
+        installmentCount: true,
+        discountType: true,
+        discountValue: true,
+        discountAmount: true,
+      },
     });
 
     if (!plan) {
@@ -283,8 +340,25 @@ export const updateFeePlan = async (userId, id, { feeTypeId, totalAmount, instal
       nextFeeTypeId = feeType.id;
     }
 
-    const nextTotal =
-      totalAmount !== undefined ? Number(totalAmount) : Number(plan.totalAmount);
+    const nextGross = money(
+      totalAmount !== undefined
+        ? totalAmount
+        : toNumber(plan.totalAmount) + toNumber(plan.discountAmount),
+    );
+    const nextDiscountType = discountType ?? plan.discountType;
+    const nextDiscountValue =
+      nextDiscountType === "NONE"
+        ? 0
+        : Number(discountValue ?? plan.discountValue);
+    const nextDiscountAmount = getDiscountAmount(
+      nextGross,
+      nextDiscountType,
+      nextDiscountValue,
+    );
+    if (nextDiscountAmount > nextGross) {
+      return { error: "DISCOUNT_EXCEEDS_TOTAL" };
+    }
+    const nextTotal = money(nextGross - nextDiscountAmount);
     const nextCount =
       installmentCount !== undefined
         ? Math.max(1, Number(installmentCount))
@@ -299,6 +373,9 @@ export const updateFeePlan = async (userId, id, { feeTypeId, totalAmount, instal
       data: {
         feeTypeId: nextFeeTypeId,
         totalAmount: nextTotal,
+        discountType: nextDiscountType,
+        discountValue: nextDiscountValue,
+        discountAmount: nextDiscountAmount,
         installmentCount: nextCount,
       },
     });
@@ -419,6 +496,8 @@ export const collectFeePayment = async (
         notes: finalReceipt.notes,
         student: installment.studentFee.student,
         feeType: installment.studentFee.feeType,
+        discountAmount: toNumber(installment.studentFee.discountAmount),
+        discountType: installment.studentFee.discountType,
       },
     };
   });
@@ -469,6 +548,10 @@ const formatReceipt = (receipt) => {
     installmentId: receipt.installments[0]?.id ?? null,
     student: receipt.installments[0]?.studentFee.student ?? null,
     feeType: receipt.installments[0]?.studentFee.feeType ?? null,
+    discountAmount: toNumber(
+      receipt.installments[0]?.studentFee.discountAmount ?? 0,
+    ),
+    discountType: receipt.installments[0]?.studentFee.discountType ?? "NONE",
   };
 };
 
@@ -486,6 +569,9 @@ export const getStudentInstallments = async (userId, studentId) => {
     planId: plan.id,
     feeType: plan.feeType,
     totalAmount: toNumber(plan.totalAmount),
+    discountType: plan.discountType,
+    discountValue: toNumber(plan.discountValue),
+    discountAmount: toNumber(plan.discountAmount),
     installments: plan.installments.map((installment) => ({
       id: installment.id,
       amount: toNumber(installment.amount),

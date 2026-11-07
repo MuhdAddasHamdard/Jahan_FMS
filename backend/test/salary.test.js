@@ -8,6 +8,7 @@ import {
   uniqueEmail,
   between,
   cleanupTestUsers,
+  createTestUser,
 } from "./helpers.js";
 import prisma from "../src/prisma";
 
@@ -37,7 +38,7 @@ const deleteJson = async (path) => {
 before(async () => {
   ({ server, baseUrl } = await startServer());
 
-  const registration = await postJson(baseUrl, "/users", {
+  const registration = await createTestUser({
     name: "Salary Admin",
     email: uniqueEmail("salary-user"),
     password: "password123",

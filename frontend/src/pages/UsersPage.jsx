@@ -141,8 +141,8 @@ const UsersPage = () => {
       toast.error("Name is required");
       return;
     }
-    if (editValue.password && editValue.password.length < 8) {
-      toast.error("New password must be at least 8 characters");
+    if (editValue.password && editValue.password.length < 12) {
+      toast.error("New password must be at least 12 characters");
       return;
     }
 
@@ -188,8 +188,8 @@ const UsersPage = () => {
       toast.error("Email is required");
       return;
     }
-    if (!createValue.password || createValue.password.length < 8) {
-      toast.error("Password must be at least 8 characters");
+    if (!createValue.password || createValue.password.length < 12) {
+      toast.error("Password must be at least 12 characters");
       return;
     }
 
@@ -425,7 +425,7 @@ const UsersPage = () => {
               type="password"
               value={editValue.password}
               onChange={(event) => setEditValue((current) => ({ ...current, password: event.target.value }))}
-              placeholder="At least 8 characters"
+              placeholder="At least 12 characters"
               className={passwordError ? errorInputClass : inputClass}
               aria-invalid={Boolean(passwordError)}
             />
@@ -554,7 +554,7 @@ const UsersPage = () => {
           <FormField
             label="Password"
             htmlFor="user-create-password"
-            hint="At least 8 characters"
+            hint="At least 12 characters"
             error={createPasswordError}
           >
             <input
@@ -564,7 +564,7 @@ const UsersPage = () => {
               onChange={(event) =>
                 setCreateValue((current) => ({ ...current, password: event.target.value }))
               }
-              placeholder="At least 8 characters"
+              placeholder="At least 12 characters"
               className={createPasswordError ? errorInputClass : inputClass}
               aria-invalid={Boolean(createPasswordError)}
             />

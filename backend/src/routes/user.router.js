@@ -1,6 +1,8 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 import {
   validateUser,
+  validateLogin,
   validateProfileUpdate,
   validateManagedUserUpdate,
   validateUserPermissions,
@@ -28,6 +30,14 @@ import { authenticateUser } from "../middleware/auth.middleware";
 import { ROLES } from "../constants/roles";
 import { PERMISSIONS } from "../constants/permissions";
 const router = express.Router();
+export const loginRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  skipSuccessfulRequests: true,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { message: "Too many login attempts. Please try again later." },
+});
 
 router.get("/", authenticateUser, authorizeRole(ROLES.ADMIN), getUsers);
 router.get(
@@ -36,7 +46,13 @@ router.get(
   authorizeRoleOrPermission(PERMISSIONS.CLASSES, ROLES.ADMIN, ROLES.FINANCE),
   getTeachersController,
 );
-router.post("/", validateUser, createUser);
+router.post(
+  "/",
+  authenticateUser,
+  authorizeRole(ROLES.ADMIN),
+  validateUser,
+  createUser,
+);
 router.post(
   "/manage",
   authenticateUser,
@@ -44,7 +60,7 @@ router.post(
   validateUser,
   createManagedUser,
 );
-router.post("/login", loginUser);
+router.post("/login", loginRateLimit, validateLogin, loginUser);
 router.get("/me", authenticateUser, getCurrentUser);
 router.patch(
   "/me",

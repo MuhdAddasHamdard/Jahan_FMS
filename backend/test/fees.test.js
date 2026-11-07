@@ -3,10 +3,12 @@ import assert from "node:assert/strict";
 import {
   startServer,
   postJson,
+  patchJson,
   getJson,
   uniqueEmail,
   between,
   cleanupTestUsers,
+  createTestUser,
 } from "./helpers.js";
 import prisma from "../src/prisma";
 
@@ -16,6 +18,7 @@ let token;
 let userId;
 
 const post = (path, body) => postJson(baseUrl, path, body, token);
+const patch = (path, body) => patchJson(baseUrl, path, body, token);
 const get = (path) => getJson(baseUrl, path, token);
 
 const deleteJson = async (path) => {
@@ -35,7 +38,7 @@ const deleteJson = async (path) => {
 before(async () => {
   ({ server, baseUrl } = await startServer());
 
-  const registration = await postJson(baseUrl, "/users", {
+  const registration = await createTestUser({
     name: "Fee Admin",
     email: uniqueEmail("fee-user"),
     password: "password123",
@@ -102,6 +105,54 @@ test("fee plan creation generates installments and amounts sum to total", async 
   assert.ok(data.installments.every((i) => i.status === "PENDING"));
 
   await prisma.studentFee.delete({ where: { id: data.id } });
+  await prisma.student.delete({ where: { id: student.data.id } });
+  await prisma.feeType.delete({ where: { id: feeType.data.id } });
+});
+
+test("fee plan discounts reduce the installment schedule and can be updated", async () => {
+  const feeType = await post("/fees/types", { name: "Discount Fee", amount: 9000 });
+  const student = await post("/students", {
+    admissionNo: `ADM-${between(1000, 9999)}`,
+    name: "Discount Student",
+  });
+  const created = await post("/fees/plans", {
+    studentId: student.data.id,
+    feeTypeId: feeType.data.id,
+    totalAmount: 9000,
+    installmentCount: 3,
+    discountType: "PERCENTAGE",
+    discountValue: 10,
+  });
+
+  assert.equal(created.status, 201);
+  assert.equal(created.data.grossAmount, 9000);
+  assert.equal(created.data.discountAmount, 900);
+  assert.equal(created.data.totalAmount, 8100);
+  assert.equal(
+    created.data.installments.reduce((sum, installment) => sum + installment.amount, 0),
+    8100,
+  );
+
+  const updated = await patch(`/fees/plans/${created.data.id}`, {
+    discountType: "FIXED",
+    discountValue: 1000,
+  });
+  assert.equal(updated.status, 200);
+  assert.equal(updated.data.grossAmount, 9000);
+  assert.equal(updated.data.discountAmount, 1000);
+  assert.equal(updated.data.totalAmount, 8000);
+  assert.equal(
+    updated.data.installments.reduce((sum, installment) => sum + installment.amount, 0),
+    8000,
+  );
+
+  const excessive = await patch(`/fees/plans/${created.data.id}`, {
+    discountType: "FIXED",
+    discountValue: 9001,
+  });
+  assert.equal(excessive.status, 400);
+
+  await prisma.studentFee.delete({ where: { id: created.data.id } });
   await prisma.student.delete({ where: { id: student.data.id } });
   await prisma.feeType.delete({ where: { id: feeType.data.id } });
 });

@@ -1,4 +1,7 @@
 import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import { auditSensitiveChange } from "./middleware/audit.middleware";
 import userRouter from "./routes/user.router";
 import dashboardRouter from "./routes/dashboard.router";
 import reportRouter from "./routes/report.router";
@@ -12,8 +15,26 @@ import expenseRouter from "./routes/expense.router";
 import settingsRouter from "./routes/settings.router";
 
 const app = express();
+const allowedOrigins = new Set(
+  (process.env.CORS_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+);
 
+app.use(helmet());
+app.use(
+  cors({
+    origin(origin, callback) {
+      callback(null, !origin || allowedOrigins.has(origin));
+    },
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    maxAge: 600,
+  }),
+);
 app.use(express.json({ limit: "3mb" }));
+app.use(auditSensitiveChange);
 app.use("/users", userRouter);
 app.use("/dashboard", dashboardRouter);
 app.use("/reports", reportRouter);

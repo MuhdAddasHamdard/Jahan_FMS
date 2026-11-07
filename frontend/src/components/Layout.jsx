@@ -329,7 +329,6 @@ const Layout = () => {
   const { theme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState(
@@ -362,7 +361,6 @@ const Layout = () => {
 
   const closeOverlays = () => {
     setMenuOpen(false);
-    setNotifOpen(false);
   };
 
   const handleLogout = () => {
@@ -484,37 +482,6 @@ const Layout = () => {
                   ⌘K
                 </span>
               </button>
-
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setNotifOpen((open) => !open)}
-                  className="icon-btn"
-                  aria-label="Notifications"
-                  aria-expanded={notifOpen}
-                >
-                  <Icon name="bell" className="h-[18px] w-[18px]" />
-                  <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-brand-500" />
-                </button>
-                {notifOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setNotifOpen(false)}
-                    />
-                    <div className="glass-strong animate-scale-in absolute right-0 z-50 mt-2 w-72 origin-top-right overflow-hidden rounded-xl shadow-[var(--shadow-float)]">
-                      <div className="border-b border-line px-4 py-3">
-                        <p className="text-sm font-semibold text-content">
-                          Notifications
-                        </p>
-                      </div>
-                      <div className="px-4 py-6 text-center text-xs text-muted">
-                        You're all caught up.
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
 
               <ThemeToggle />
 

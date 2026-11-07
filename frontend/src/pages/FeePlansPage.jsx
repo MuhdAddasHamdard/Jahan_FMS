@@ -63,7 +63,10 @@ const PlanFields = ({ value, onChange, students, feeTypes, idPrefix }) => (
       </select>
     </FormField>
 
-    <FormField label="Total amount" htmlFor={`${idPrefix}-total`}>
+    <FormField
+      label="Fee amount before discount"
+      htmlFor={`${idPrefix}-total`}
+    >
       <input
         id={`${idPrefix}-total`}
         type="number"
@@ -75,6 +78,50 @@ const PlanFields = ({ value, onChange, students, feeTypes, idPrefix }) => (
         className={inputClass}
       />
     </FormField>
+
+    <FormField
+      label="Discount"
+      htmlFor={`${idPrefix}-discount-type`}
+      hint="Applied once to the whole fee plan"
+    >
+      <select
+        id={`${idPrefix}-discount-type`}
+        value={value.discountType}
+        onChange={(event) =>
+          onChange({
+            ...value,
+            discountType: event.target.value,
+            discountValue: event.target.value === "NONE" ? "0" : value.discountValue,
+          })
+        }
+        className={inputClass}
+      >
+        <option value="NONE">No discount</option>
+        <option value="PERCENTAGE">Percentage</option>
+        <option value="FIXED">Fixed amount</option>
+      </select>
+    </FormField>
+
+    {value.discountType !== "NONE" && (
+      <FormField
+        label={value.discountType === "PERCENTAGE" ? "Discount percent" : "Discount amount"}
+        htmlFor={`${idPrefix}-discount-value`}
+        hint={value.discountType === "PERCENTAGE" ? "From 0 to 100%" : "In the same currency as the fee"}
+      >
+        <input
+          id={`${idPrefix}-discount-value`}
+          type="number"
+          min="0"
+          max={value.discountType === "PERCENTAGE" ? "100" : undefined}
+          step="0.01"
+          value={value.discountValue}
+          onChange={(event) =>
+            onChange({ ...value, discountValue: event.target.value })
+          }
+          className={inputClass}
+        />
+      </FormField>
+    )}
 
     <FormField
       label="Number of installments"
@@ -238,11 +285,17 @@ const PlanDetailPanel = ({ plan, onChanged }) => {
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-4">
         <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
           <p className="text-xs text-slate-400">Total</p>
           <p className="text-lg font-bold text-slate-900">
             {formatNumber(detail.totalAmount)}
+          </p>
+        </div>
+        <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
+          <p className="text-xs text-slate-400">Discount</p>
+          <p className="text-lg font-bold text-violet-700">
+            {formatNumber(detail.discountAmount)}
           </p>
         </div>
         <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
@@ -309,6 +362,8 @@ const emptyPlan = {
   feeTypeId: "",
   totalAmount: "",
   installmentCount: "1",
+  discountType: "NONE",
+  discountValue: "0",
 };
 
 const FeePlansPage = () => {
@@ -362,6 +417,21 @@ const FeePlansPage = () => {
     if (!value.totalAmount || Number(value.totalAmount) <= 0) {
       return "Total amount must be greater than zero";
     }
+    const discount = Number(value.discountValue);
+    if (
+      value.discountType === "PERCENTAGE" &&
+      (!Number.isFinite(discount) || discount <= 0 || discount > 100)
+    ) {
+      return "Percentage discount must be greater than zero and at most 100";
+    }
+    if (
+      value.discountType === "FIXED" &&
+      (!Number.isFinite(discount) ||
+        discount <= 0 ||
+        discount > Number(value.totalAmount))
+    ) {
+      return "Fixed discount must be greater than zero and no more than the fee amount";
+    }
     return "";
   };
 
@@ -387,6 +457,8 @@ const FeePlansPage = () => {
         feeTypeId: Number(draft.feeTypeId),
         totalAmount: Number(draft.totalAmount),
         installmentCount: Math.max(1, Number(draft.installmentCount) || 1),
+        discountType: draft.discountType,
+        discountValue: Number(draft.discountValue) || 0,
       });
       setCreating(false);
       setDraft(emptyPlan);
@@ -406,8 +478,10 @@ const FeePlansPage = () => {
       setEditValue({
         studentId: String(detail.student.id),
         feeTypeId: String(detail.feeType.id),
-        totalAmount: String(detail.totalAmount),
+        totalAmount: String(detail.grossAmount ?? detail.totalAmount),
         installmentCount: String(detail.installmentCount),
+        discountType: detail.discountType ?? "NONE",
+        discountValue: String(detail.discountValue ?? 0),
       });
     } catch (err) {
       toast.error(err.message);
@@ -428,6 +502,8 @@ const FeePlansPage = () => {
         feeTypeId: Number(editValue.feeTypeId),
         totalAmount: Number(editValue.totalAmount),
         installmentCount: Math.max(1, Number(editValue.installmentCount) || 1),
+        discountType: editValue.discountType,
+        discountValue: Number(editValue.discountValue) || 0,
       });
       setEditing(null);
       toast.success("Fee plan updated");
@@ -487,7 +563,17 @@ const FeePlansPage = () => {
       align: "right",
       sortable: true,
       render: (plan) => (
-        <span className="text-slate-700">{formatNumber(plan.totalAmount)}</span>
+        <div>
+          <span className="font-medium text-slate-700">
+            {formatNumber(plan.totalAmount)}
+          </span>
+          {plan.discountAmount > 0 && (
+            <span className="mt-1 block text-xs text-violet-600">
+              {formatNumber(plan.discountAmount)} discount from{" "}
+              {formatNumber(plan.grossAmount)}
+            </span>
+          )}
+        </div>
       ),
     },
     {

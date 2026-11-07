@@ -335,7 +335,7 @@ const AccountForm = ({ onSubmit, submitting, idPrefix }) => {
         <FormField
           label="Password"
           htmlFor={`${idPrefix}-account-password`}
-          hint="At least 8 characters"
+          hint="At least 12 characters"
           error={passwordError}
           success={password && !passwordError ? PASSWORD_RULE.label + " ✓" : ""}
         >

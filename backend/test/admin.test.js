@@ -7,6 +7,7 @@ import {
   uniqueEmail,
   between,
   cleanupTestUsers,
+  createTestUser,
 } from "./helpers.js";
 import prisma from "../src/prisma";
 
@@ -54,7 +55,7 @@ const deleteJson = async (path, token) => {
 before(async () => {
   ({ server, baseUrl } = await startServer());
 
-  const admin = await postJson(baseUrl, "/users", {
+  const admin = await createTestUser({
     name: "Boss Admin",
     email: uniqueEmail("admin-boss"),
     password: "password123",
@@ -72,7 +73,7 @@ before(async () => {
   });
   adminToken = adminLogin.data.token;
 
-  const employee = await postJson(baseUrl, "/users", {
+  const employee = await createTestUser({
     name: "Lowly Employee",
     email: uniqueEmail("admin-emp"),
     password: "password123",
@@ -96,7 +97,7 @@ after(async () => {
 });
 
 test("PATCH /users/:id/role with ADMIN updates the role", async () => {
-  const target = await postJson(baseUrl, "/users", {
+  const target = await createTestUser({
     name: "Promotable",
     email: uniqueEmail("promotable"),
     password: "password123",
@@ -116,7 +117,7 @@ test("PATCH /users/:id/role with ADMIN updates the role", async () => {
 });
 
 test("PATCH /users/:id/role rejects invalid roles", async () => {
-  const target = await postJson(baseUrl, "/users", {
+  const target = await createTestUser({
     name: "A",
     email: uniqueEmail("bad-role"),
     password: "password123",
@@ -133,7 +134,7 @@ test("PATCH /users/:id/role rejects invalid roles", async () => {
 });
 
 test("PATCH /users/:id/role is forbidden for non-admin users", async () => {
-  const target = await postJson(baseUrl, "/users", {
+  const target = await createTestUser({
     name: "B",
     email: uniqueEmail("role-emp"),
     password: "password123",
@@ -200,7 +201,7 @@ test("PATCH /users/:id/permissions does not change administrator access", async 
 });
 
 test("DELETE /users/:id with ADMIN deletes the user", async () => {
-  const target = await postJson(baseUrl, "/users", {
+  const target = await createTestUser({
     name: "Doomed",
     email: uniqueEmail("doomed"),
     password: "password123",
@@ -226,7 +227,7 @@ test("GET /users lists all users for the ADMIN", async () => {
 });
 
 test("DELETE /users/:id cascades to institute data", async () => {
-  const target = await postJson(baseUrl, "/users", {
+  const target = await createTestUser({
     name: "Cascade",
     email: uniqueEmail("cascade"),
     password: "password123",
@@ -241,7 +242,7 @@ test("DELETE /users/:id cascades to institute data", async () => {
   });
   const targetToken = targetLogin.data.token;
 
-  const teacher = await postJson(baseUrl, "/users", {
+  const teacher = await createTestUser({
     name: "Cascade Teacher",
     email: uniqueEmail("cascade-teacher"),
     password: "password123",

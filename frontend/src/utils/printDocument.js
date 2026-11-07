@@ -112,6 +112,9 @@ export const printFeeReceipt = (receipt, printWindow) =>
         : [],
       rows: [
         { label: "Fee", value: receipt.feeType?.name ?? "Student fees" },
+        ...(receipt.discountAmount > 0
+          ? [{ label: "Plan discount (total)", value: formatNumber(receipt.discountAmount) }]
+          : []),
         { label: "Amount received", value: formatNumber(receipt.amount), total: true },
       ],
       note: receipt.notes || "Thank you. Please retain this receipt for your records.",

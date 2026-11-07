@@ -62,6 +62,10 @@ export const businessErrorToResponse = (error) => {
       message: "Only an admin or finance user can manage this student's login.",
     },
     PLAN_EXISTS: { status: 409, message: "This student already has this fee assigned" },
+    DISCOUNT_EXCEEDS_TOTAL: {
+      status: 400,
+      message: "The discount cannot be greater than the fee total",
+    },
     PLAN_HAS_PAYMENTS: {
       status: 400,
       message: "Cannot delete: this fee plan already has payments",
@@ -105,7 +109,7 @@ export const businessErrorToResponse = (error) => {
     },
     USER_PASSWORD_TOO_SHORT: {
       status: 400,
-      message: "Password must be at least 8 characters",
+      message: "Password must be at least 12 characters",
     },
     STAFF_NO_EXISTS: {
       status: 409,

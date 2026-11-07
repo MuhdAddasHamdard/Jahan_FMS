@@ -1,6 +1,7 @@
 import { PERMISSION_VALUES } from "../constants/permissions";
 
 const MAX_AVATAR_LENGTH = 1_500_000;
+const MIN_PASSWORD_LENGTH = 12;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -26,8 +27,10 @@ export const validateManagedUserUpdate = (req, res, next) => {
     return res.status(400).json({ message: "Please provide a valid email address" });
   }
 
-  if (password !== undefined && String(password).length < 8) {
-    return res.status(400).json({ message: "password must be at least 8 characters long" });
+  if (password !== undefined && String(password).length < MIN_PASSWORD_LENGTH) {
+    return res.status(400).json({
+      message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+    });
   }
 
   next();
@@ -74,9 +77,9 @@ export const validateUser = (req, res, next) => {
     });
   }
 
-  if (password.length < 8) {
+  if (password.length < MIN_PASSWORD_LENGTH) {
     return res.status(400).json({
-      message: "password must be at least 8 characters long",
+      message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
     });
   }
 
@@ -86,6 +89,22 @@ export const validateUser = (req, res, next) => {
     return res.status(400).json({
       message: "Please provide a valid email address",
     });
+  }
+
+  next();
+};
+
+export const validateLogin = (req, res, next) => {
+  const { email, password } = req.body;
+
+  if (
+    typeof email !== "string" ||
+    !EMAIL_PATTERN.test(email) ||
+    typeof password !== "string" ||
+    password.length === 0 ||
+    password.length > 1024
+  ) {
+    return res.status(401).json({ message: "Invalid email or password" });
   }
 
   next();
@@ -123,8 +142,10 @@ export const validateProfileUpdate = (req, res, next) => {
     if (typeof password !== "string") {
       return res.status(400).json({ message: "Password must be a string" });
     }
-    if (password.length < 8) {
-      return res.status(400).json({ message: "password must be at least 8 characters long" });
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({
+        message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+      });
     }
     if (typeof currentPassword !== "string" || !currentPassword) {
       return res.status(400).json({ message: "Current password is required to change your password" });

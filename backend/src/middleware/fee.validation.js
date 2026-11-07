@@ -1,6 +1,44 @@
 import { FEE_PERIODS, INSTALLMENT_STATUSES } from "../constants/fee";
 
 const isPositiveNumber = (value) => Number.isFinite(Number(value)) && Number(value) > 0;
+const DISCOUNT_TYPES = ["NONE", "PERCENTAGE", "FIXED"];
+
+const validateDiscount = (body) => {
+  const { discountType, discountValue } = body;
+  if (discountType === undefined && discountValue === undefined) return null;
+
+  if (discountType !== undefined && !DISCOUNT_TYPES.includes(discountType)) {
+    return "discountType must be NONE, PERCENTAGE or FIXED";
+  }
+  if (discountValue !== undefined && (
+    !Number.isFinite(Number(discountValue)) ||
+    Number(discountValue) < 0 ||
+    !/^\d+(\.\d{1,2})?$/.test(String(discountValue))
+  )) {
+    return "discountValue must be a non-negative amount with at most two decimal places";
+  }
+  if (
+    discountType === undefined &&
+    discountValue !== undefined &&
+    Number(discountValue) !== 0
+  ) {
+    return "discountType is required when a discountValue is provided";
+  }
+  if (discountType === "NONE" && Number(discountValue ?? 0) !== 0) {
+    return "discountValue must be zero when discountType is NONE";
+  }
+  if (
+    discountType === "PERCENTAGE" &&
+    (!isPositiveNumber(discountValue) || Number(discountValue) > 100)
+  ) {
+    return "Percentage discount must be greater than zero and at most 100";
+  }
+  if (discountType === "FIXED" && !isPositiveNumber(discountValue)) {
+    return "Fixed discount must be greater than zero";
+  }
+
+  return null;
+};
 
 export const validateFeeType = (req, res, next) => {
   const { name, amount, period } = req.body;
@@ -65,11 +103,15 @@ export const validateFeePlan = (req, res, next) => {
     return res.status(400).json({ message: "installmentCount must be an integer" });
   }
 
+  const discountError = validateDiscount(req.body);
+  if (discountError) return res.status(400).json({ message: discountError });
+
   next();
 };
 
 export const validateFeePlanUpdate = (req, res, next) => {
-  const { feeTypeId, totalAmount, installmentCount } = req.body;
+  const { feeTypeId, totalAmount, installmentCount, discountType, discountValue } =
+    req.body;
 
   if (feeTypeId !== undefined && Number.isNaN(Number(feeTypeId))) {
     return res.status(400).json({ message: "feeTypeId must be a number" });
@@ -88,7 +130,21 @@ export const validateFeePlanUpdate = (req, res, next) => {
     });
   }
 
-  if (feeTypeId === undefined && totalAmount === undefined && installmentCount === undefined) {
+  if ((discountType === undefined) !== (discountValue === undefined)) {
+    return res.status(400).json({
+      message: "discountType and discountValue must be updated together",
+    });
+  }
+
+  const discountError = validateDiscount(req.body);
+  if (discountError) return res.status(400).json({ message: discountError });
+
+  if (
+    feeTypeId === undefined &&
+    totalAmount === undefined &&
+    installmentCount === undefined &&
+    discountType === undefined
+  ) {
     return res.status(400).json({ message: "Nothing to update" });
   }
 

@@ -7,6 +7,7 @@ import {
   uniqueEmail,
   between,
   cleanupTestUsers,
+  createTestUser,
 } from "./helpers.js";
 import prisma from "../src/prisma";
 
@@ -47,7 +48,7 @@ const deleteJson = async (path) => {
 before(async () => {
   ({ server, baseUrl } = await startServer());
 
-  const registration = await postJson(baseUrl, "/users", {
+  const registration = await createTestUser({
     name: "Student Admin",
     email: uniqueEmail("student-user"),
     password: "password123",
@@ -188,7 +189,7 @@ test("POST /students/:id/account creates a STUDENT login and links it", async ()
   const { status, data } = await postJson(
     baseUrl,
     `/students/${student.id}/account`,
-    { name: "Linked Me", email: accountEmail, password: "password123" },
+    { name: "Linked Me", email: accountEmail, password: "SecurePassword123" },
     token,
   );
 
@@ -215,13 +216,13 @@ test("a student cannot be linked twice", async () => {
   await postJson(
     baseUrl,
     `/students/${student.id}/account`,
-    { email: uniqueEmail("link-one"), password: "password123" },
+    { email: uniqueEmail("link-one"), password: "SecurePassword123" },
     token,
   );
   const second = await postJson(
     baseUrl,
     `/students/${student.id}/account`,
-    { email: uniqueEmail("link-two"), password: "password123" },
+    { email: uniqueEmail("link-two"), password: "SecurePassword123" },
     token,
   );
   assert.equal(second.status, 409);
@@ -243,13 +244,13 @@ test("GET /students/me returns the linked student's portal", async () => {
   const linked = await postJson(
     baseUrl,
     `/students/${student.id}/account`,
-    { email: accountEmail, password: "password123" },
+    { email: accountEmail, password: "SecurePassword123" },
     token,
   );
 
   const login = await postJson(baseUrl, "/users/login", {
     email: accountEmail,
-    password: "password123",
+    password: "SecurePassword123",
   });
   assert.equal(login.status, 200);
 
@@ -276,7 +277,7 @@ test("DELETE /students/:id/account unlinks the login", async () => {
   const linked = await postJson(
     baseUrl,
     `/students/${student.id}/account`,
-    { email: uniqueEmail("unlink"), password: "password123" },
+    { email: uniqueEmail("unlink"), password: "SecurePassword123" },
     token,
   );
 

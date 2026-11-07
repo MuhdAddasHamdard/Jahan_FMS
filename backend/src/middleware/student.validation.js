@@ -1,6 +1,7 @@
 import { STUDENT_STATUSES } from "../constants/student";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LENGTH = 12;
 
 export const validateStudentAccount = (req, res, next) => {
   const { name, email, password } = req.body;
@@ -9,8 +10,10 @@ export const validateStudentAccount = (req, res, next) => {
     return res.status(400).json({ message: "A valid email is required" });
   }
 
-  if (!password || typeof password !== "string" || password.length < 8) {
-    return res.status(400).json({ message: "Password must be at least 8 characters" });
+  if (!password || typeof password !== "string" || password.length < MIN_PASSWORD_LENGTH) {
+    return res.status(400).json({
+      message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+    });
   }
 
   if (name !== undefined && name !== null && String(name).trim().length === 0) {

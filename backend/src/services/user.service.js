@@ -36,6 +36,7 @@ export const createUserService = async (userData) => {
   const user = await prisma.user.create({
     data: {
       ...userData,
+      email: userData.email.trim().toLowerCase(),
       password: hashedPassword,
     },
     select: publicUserSelect,
@@ -45,12 +46,14 @@ export const createUserService = async (userData) => {
 };
 
 export const loginUserService = async (email, password) => {
-  const user = await prisma.user.findUnique({
-    where: {
-      email,
-    },
-  });
+  const [user] = await prisma.$queryRaw`
+    SELECT *
+    FROM "User"
+    WHERE LOWER("email") = LOWER(${email.trim()})
+    LIMIT 1
+  `;
   if (!user) {
+    await bcrypt.hash(password, 10);
     return null;
   }
 
@@ -84,7 +87,7 @@ export const updateCurrentUserService = async (userId, profileData) => {
   const { name, email, avatarUrl } = profileData;
   const data = {
     name: name !== undefined ? String(name).trim() : undefined,
-    email: email !== undefined ? String(email).trim() : undefined,
+    email: email !== undefined ? String(email).trim().toLowerCase() : undefined,
     avatarUrl: avatarUrl !== undefined ? avatarUrl : undefined,
   };
 
@@ -126,7 +129,9 @@ export const updateUserService = async (id, profileData) => {
 
   const data = {
     name: profileData.name !== undefined ? String(profileData.name).trim() : undefined,
-    email: profileData.email !== undefined ? String(profileData.email).trim() : undefined,
+    email: profileData.email !== undefined
+      ? String(profileData.email).trim().toLowerCase()
+      : undefined,
   };
 
   if (profileData.password) {

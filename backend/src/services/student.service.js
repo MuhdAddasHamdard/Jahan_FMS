@@ -47,7 +47,7 @@ const studentClassInclude = {
   },
 };
 
-const formatInstallment = (installment) => ({
+const formatInstallment = (installment, discountAmount = 0) => ({
   id: installment.id,
   amount: toNumber(installment.amount),
   paidAmount: toNumber(installment.paidAmount),
@@ -60,6 +60,7 @@ const formatInstallment = (installment) => ({
         number: installment.receipt.number,
         amount: toNumber(installment.receipt.amount),
         paidAt: installment.receipt.paidAt,
+        discountAmount,
       }
     : null,
 });
@@ -70,6 +71,7 @@ const formatFeePlan = (plan) => {
     0,
   );
   const totalAmount = toNumber(plan.totalAmount);
+  const discountAmount = toNumber(plan.discountAmount);
   const balance = totalAmount - paidAmount;
   const planStatus = balance <= 0 ? "PAID" : paidAmount > 0 ? "PARTIAL" : "PENDING";
 
@@ -82,11 +84,17 @@ const formatFeePlan = (plan) => {
       period: plan.feeType.period,
     },
     totalAmount,
+    grossAmount: totalAmount + discountAmount,
+    discountType: plan.discountType,
+    discountValue: toNumber(plan.discountValue),
+    discountAmount,
     installmentCount: plan.installmentCount,
     paidAmount,
     balance,
     status: planStatus,
-    installments: plan.installments.map(formatInstallment),
+    installments: plan.installments.map((installment) =>
+      formatInstallment(installment, discountAmount),
+    ),
   };
 };
 

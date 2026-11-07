@@ -8,29 +8,29 @@ datasource db {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  name         String
-  email        String        @unique
-  password     String
-  role         String        @default("STUDENT")
-  permissions  String[]      @default([])
-  avatarUrl    String?
-  createdAt    DateTime      @default(now())
-  classes      Class[]       @relation("ClassOwner")
-  taughtClasses Class[]      @relation("ClassTeacher")
-  students     Student[]     @relation("StudentOwner")
-  studentAccount Student?    @relation("StudentAccount")
-  feeTypes     FeeType[]
-  studentFees  StudentFee[]
+  id              Int              @id @default(autoincrement())
+  name            String
+  email           String           @unique
+  password        String
+  role            String           @default("STUDENT")
+  permissions     String[]         @default([])
+  avatarUrl       String?
+  createdAt       DateTime         @default(now())
+  classes         Class[]          @relation("ClassOwner")
+  taughtClasses   Class[]          @relation("ClassTeacher")
+  students        Student[]        @relation("StudentOwner")
+  studentAccount  Student?         @relation("StudentAccount")
+  feeTypes        FeeType[]
+  studentFees     StudentFee[]
   feeInstallments FeeInstallment[]
-  receipts     Receipt[]
-  refunds      Refund[]
-  staff        Staff[]
-  staffSalaries StaffSalary[]
-  salaryPayments SalaryPayment[]
-  scheduleEntries ClassSchedule[] @relation("ScheduleAuthor")
-  materials    CourseMaterial[]   @relation("MaterialAuthor")
-  expenses     Expense[]
+  receipts        Receipt[]
+  refunds         Refund[]
+  staff           Staff[]
+  staffSalaries   StaffSalary[]
+  salaryPayments  SalaryPayment[]
+  scheduleEntries ClassSchedule[]  @relation("ScheduleAuthor")
+  materials       CourseMaterial[] @relation("MaterialAuthor")
+  expenses        Expense[]
 }
 
 model InstituteSettings {
@@ -44,18 +44,18 @@ model InstituteSettings {
 }
 
 model Class {
-  id          Int              @id @default(autoincrement())
-  name        String
-  section     String?
-  userId      Int
-  user        User             @relation("ClassOwner", fields: [userId], references: [id], onDelete: Cascade)
-  teacherId   Int?
-  teacher     User?            @relation("ClassTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
-  students    Student[]
-  schedules   ClassSchedule[]
-  materials   CourseMaterial[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id        Int              @id @default(autoincrement())
+  name      String
+  section   String?
+  userId    Int
+  user      User             @relation("ClassOwner", fields: [userId], references: [id], onDelete: Cascade)
+  teacherId Int?
+  teacher   User?            @relation("ClassTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+  students  Student[]
+  schedules ClassSchedule[]
+  materials CourseMaterial[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 
   @@index([userId])
   @@index([teacherId])
@@ -87,32 +87,35 @@ model Student {
 }
 
 model FeeType {
-  id         Int          @id @default(autoincrement())
-  name       String
-  amount     Decimal      @default(0) @db.Decimal(12, 2)
-  period     String       @default("MONTHLY")
-  userId     Int
-  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plans      StudentFee[]
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  id        Int          @id @default(autoincrement())
+  name      String
+  amount    Decimal      @default(0) @db.Decimal(12, 2)
+  period    String       @default("MONTHLY")
+  userId    Int
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plans     StudentFee[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   @@index([userId])
 }
 
 model StudentFee {
-  id               Int             @id @default(autoincrement())
+  id               Int              @id @default(autoincrement())
   studentId        Int
-  student          Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student          Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
   feeTypeId        Int
-  feeType          FeeType         @relation(fields: [feeTypeId], references: [id], onDelete: Cascade)
-  totalAmount      Decimal         @default(0) @db.Decimal(12, 2)
-  installmentCount Int             @default(1)
+  feeType          FeeType          @relation(fields: [feeTypeId], references: [id], onDelete: Cascade)
+  totalAmount      Decimal          @default(0) @db.Decimal(12, 2)
+  discountType     String           @default("NONE")
+  discountValue    Decimal          @default(0) @db.Decimal(12, 2)
+  discountAmount   Decimal          @default(0) @db.Decimal(12, 2)
+  installmentCount Int              @default(1)
   userId           Int
-  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   installments     FeeInstallment[]
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   @@unique([studentId, feeTypeId])
   @@index([studentId])
@@ -120,20 +123,20 @@ model StudentFee {
 }
 
 model FeeInstallment {
-  id            Int        @id @default(autoincrement())
-  studentFeeId  Int
-  studentFee    StudentFee @relation(fields: [studentFeeId], references: [id], onDelete: Cascade)
-  amount        Decimal    @default(0) @db.Decimal(12, 2)
-  paidAmount    Decimal    @default(0) @db.Decimal(12, 2)
-  dueDate       DateTime?
-  paidAt        DateTime?
-  status        String     @default("PENDING")
-  receiptId     Int?
-  receipt       Receipt?   @relation(fields: [receiptId], references: [id], onDelete: SetNull)
-  userId        Int
-  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id           Int        @id @default(autoincrement())
+  studentFeeId Int
+  studentFee   StudentFee @relation(fields: [studentFeeId], references: [id], onDelete: Cascade)
+  amount       Decimal    @default(0) @db.Decimal(12, 2)
+  paidAmount   Decimal    @default(0) @db.Decimal(12, 2)
+  dueDate      DateTime?
+  paidAt       DateTime?
+  status       String     @default("PENDING")
+  receiptId    Int?
+  receipt      Receipt?   @relation(fields: [receiptId], references: [id], onDelete: SetNull)
+  userId       Int
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   @@index([studentFeeId])
   @@index([userId])
@@ -155,17 +158,17 @@ model Receipt {
 }
 
 model Refund {
-  id         Int          @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   studentId  Int
-  student    Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   receiptId  Int?
-  receipt    Receipt?     @relation(fields: [receiptId], references: [id], onDelete: SetNull)
-  amount     Decimal      @default(0) @db.Decimal(12, 2)
+  receipt    Receipt? @relation(fields: [receiptId], references: [id], onDelete: SetNull)
+  amount     Decimal  @default(0) @db.Decimal(12, 2)
   reason     String?
-  refundedOn DateTime     @default(now())
+  refundedOn DateTime @default(now())
   userId     Int
-  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt  DateTime     @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
 
   @@index([studentId])
   @@index([receiptId])
@@ -173,18 +176,18 @@ model Refund {
 }
 
 model Staff {
-  id           Int              @id @default(autoincrement())
-  staffNo      String
-  name         String
-  designation  String           @default("TEACHER")
-  phone        String?
-  email        String?
-  userId       Int
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  salaryRates  StaffSalary[]
-  payments     SalaryPayment[]
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  id          Int             @id @default(autoincrement())
+  staffNo     String
+  name        String
+  designation String          @default("TEACHER")
+  phone       String?
+  email       String?
+  userId      Int
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salaryRates StaffSalary[]
+  payments    SalaryPayment[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   @@unique([userId, staffNo])
   @@index([userId])
@@ -206,16 +209,16 @@ model StaffSalary {
 }
 
 model SalaryPayment {
-  id          Int        @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   staffId     Int
-  staff       Staff      @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  amount      Decimal    @default(0) @db.Decimal(12, 2)
+  staff       Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  amount      Decimal  @default(0) @db.Decimal(12, 2)
   periodMonth String
-  paidOn      DateTime   @default(now())
+  paidOn      DateTime @default(now())
   notes       String?
   userId      Int
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime   @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
 
   @@unique([staffId, periodMonth])
   @@index([staffId])

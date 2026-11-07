@@ -7,6 +7,7 @@ import {
   uniqueEmail,
   between,
   cleanupTestUsers,
+  createTestUser,
 } from "./helpers.js";
 import prisma from "../src/prisma";
 
@@ -24,7 +25,7 @@ let seedReceiptNumber;
 before(async () => {
   ({ server, baseUrl } = await startServer());
 
-  const admin = await postJson(baseUrl, "/users", {
+  const admin = await createTestUser({
     name: "Dash Admin",
     email: uniqueEmail("dash-admin"),
     password: "password123",
@@ -45,7 +46,7 @@ before(async () => {
     throw new Error(`baseline dashboard failed: ${JSON.stringify(baseline)}`);
   }
 
-  const member = await postJson(baseUrl, "/users", {
+  const member = await createTestUser({
     name: "Dash Member",
     email: uniqueEmail("dash-member"),
     password: "password123",
@@ -56,7 +57,7 @@ before(async () => {
   });
   memberToken = memberLogin.data.token;
 
-  const teacher = await postJson(baseUrl, "/users", {
+  const teacher = await createTestUser({
     name: "Dash Teacher",
     email: uniqueEmail("dash-teacher"),
     password: "password123",
@@ -95,7 +96,7 @@ before(async () => {
     teacherToken,
   );
 
-  const officeTeacher = await postJson(baseUrl, "/users", {
+  const officeTeacher = await createTestUser({
     name: "Dash Office Teacher",
     email: uniqueEmail("dash-office-teacher"),
     password: "password123",

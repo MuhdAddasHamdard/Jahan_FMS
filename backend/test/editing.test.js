@@ -8,6 +8,7 @@ import {
   uniqueEmail,
   between,
   cleanupTestUsers,
+  createTestUser,
 } from "./helpers.js";
 import prisma from "../src/prisma";
 
@@ -38,7 +39,7 @@ const deleteJson = async (path, token = adminToken) => {
 };
 
 const createAdmin = async (prefix) => {
-  const registration = await postJson(baseUrl, "/users", {
+  const registration = await createTestUser({
     name: "Edit Admin",
     email: uniqueEmail(prefix),
     password: "password123",
@@ -76,7 +77,7 @@ before(async () => {
   });
   financeToken = financeLogin.data.token;
 
-  const teacher = await postJson(baseUrl, "/users", {
+  const teacher = await createTestUser({
     name: "Edit Teacher",
     email: uniqueEmail("edit-teacher"),
     password: "password123",
@@ -273,7 +274,7 @@ test("PATCH /salary-payments/:id updates period, amount and date", async () => {
 });
 
 test("PATCH /users/:id updates name, email and password without current password", async () => {
-  const target = await postJson(baseUrl, "/users", {
+  const target = await createTestUser({
     name: "Before Name",
     email: uniqueEmail("managed-target"),
     password: "password123",
@@ -308,7 +309,7 @@ test("PATCH /users/:id updates name, email and password without current password
 });
 
 test("PATCH /users/:id rejects protected fields and non-admins", async () => {
-  const target = await postJson(baseUrl, "/users", {
+  const target = await createTestUser({
     name: "Role Guard",
     email: uniqueEmail("role-guard"),
     password: "password123",
@@ -398,7 +399,7 @@ test("PATCH /students/:id can move and clear a class", async () => {
 });
 
 test("classes carry a teacher and students surface their class teacher", async () => {
-  const teacherReg = await postJson(baseUrl, "/users", {
+  const teacherReg = await createTestUser({
     name: "Class Teacher",
     email: uniqueEmail("class-teacher"),
     password: "password123",
@@ -450,7 +451,7 @@ test("finance can list teachers and assign them to classes", async () => {
     assert.ok(teacher.name);
   });
 
-  const teacherRes = await postJson(baseUrl, "/users", {
+  const teacherRes = await createTestUser({
     name: "Finance Assigned Teacher",
     email: uniqueEmail("finance-teacher"),
     password: "password123",
@@ -481,7 +482,7 @@ test("finance can list teachers and assign them to classes", async () => {
 });
 
 test("classes reject accounts that are not teachers", async () => {
-  const studentReg = await postJson(baseUrl, "/users", {
+  const studentReg = await createTestUser({
     name: "Not A Teacher",
     email: uniqueEmail("not-teacher"),
     password: "password123",
@@ -499,7 +500,7 @@ test("classes reject accounts that are not teachers", async () => {
 });
 
 test("teachers cannot read the teacher directory", async () => {
-  const registration = await postJson(baseUrl, "/users", {
+  const registration = await createTestUser({
     name: "Directory Teacher",
     email: uniqueEmail("directory-teacher"),
     password: "password123",
@@ -521,7 +522,7 @@ test("teachers cannot read the teacher directory", async () => {
 });
 
 test("avatar upload accepts a large base64 payload and rejects absurd ones", async () => {
-  const target = await postJson(baseUrl, "/users", {
+  const target = await createTestUser({
     name: "Avatar User",
     email: uniqueEmail("avatar"),
     password: "password123",
@@ -552,7 +553,7 @@ test("avatar upload accepts a large base64 payload and rejects absurd ones", asy
 });
 
 test("PATCH /users/me accepts and clears a profile avatar", async () => {
-  const target = await postJson(baseUrl, "/users", {
+  const target = await createTestUser({
     name: "Avatar Clear",
     email: uniqueEmail("avatar-clear"),
     password: "password123",
@@ -590,7 +591,7 @@ test("oversized JSON bodies return a helpful 413 message", async () => {
 });
 
 test("teachers cannot use admin-only edit endpoints", async () => {
-  const registration = await postJson(baseUrl, "/users", {
+  const registration = await createTestUser({
     name: "Edit Teacher",
     email: uniqueEmail("edit-teacher"),
     password: "password123",
@@ -605,7 +606,7 @@ test("teachers cannot use admin-only edit endpoints", async () => {
   });
   const teacherToken = login.data.token;
 
-  const target = await postJson(baseUrl, "/users", {
+  const target = await createTestUser({
     name: "Teacher Target",
     email: uniqueEmail("teacher-target"),
     password: "password123",

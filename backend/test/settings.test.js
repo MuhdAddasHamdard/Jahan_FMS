@@ -6,6 +6,7 @@ import {
   getJson,
   uniqueEmail,
   cleanupTestUsers,
+  createTestUser,
 } from "./helpers.js";
 import prisma from "../src/prisma";
 
@@ -38,7 +39,7 @@ const patchJson = async (path, body, authToken = token) => {
 before(async () => {
   ({ server, baseUrl } = await startServer());
 
-  const registration = await postJson(baseUrl, "/users", {
+  const registration = await createTestUser({
     name: "Settings Admin",
     email: uniqueEmail("settings-user"),
     password: originalPassword,
@@ -80,11 +81,11 @@ test("PATCH /users/me rejects invalid email", async () => {
 });
 
 test("changing password requires the current password", async () => {
-  const { status } = await patchJson("/users/me", { password: "brandnew123" });
+  const { status } = await patchJson("/users/me", { password: "brandnew1234" });
   assert.equal(status, 400);
 
   const wrong = await patchJson("/users/me", {
-    password: "brandnew123",
+    password: "brandnew1234",
     currentPassword: "definitely-wrong",
   });
   assert.equal(wrong.status, 400);
