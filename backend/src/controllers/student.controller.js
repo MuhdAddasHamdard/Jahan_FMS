@@ -7,6 +7,7 @@ import {
   linkStudentAccount,
   unlinkStudentAccount,
   getStudentPortal,
+  hasAdmissionNumber,
 } from "../services/student.service";
 import { businessErrorToResponse } from "../utils/errors";
 import { Prisma } from "../../generated/prisma/client";
@@ -21,6 +22,24 @@ export const getStudents = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Something went wrong on the server" });
+  }
+};
+
+export const checkAdmissionNumber = async (req, res) => {
+  const admissionNo = typeof req.query.admissionNo === "string"
+    ? req.query.admissionNo.trim()
+    : "";
+
+  if (!admissionNo) {
+    return res.status(400).json({ message: "Enter an admission number to check" });
+  }
+
+  try {
+    const exists = await hasAdmissionNumber(req.user.id, admissionNo);
+    res.status(200).json({ exists });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Could not check the admission number. Please try again." });
   }
 };
 
@@ -51,7 +70,9 @@ export const createStudentController = async (req, res) => {
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      return res.status(409).json({ message: "Admission number already exists" });
+      return res.status(409).json({
+        message: "This admission number is already used by another student. Each student must have a unique ID.",
+      });
     }
     res.status(500).json({ message: "Something went wrong on the server" });
   }
@@ -70,7 +91,9 @@ export const updateStudentController = async (req, res) => {
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      return res.status(409).json({ message: "Admission number already exists" });
+      return res.status(409).json({
+        message: "This admission number is already used by another student. Each student must have a unique ID.",
+      });
     }
     res.status(500).json({ message: "Something went wrong on the server" });
   }

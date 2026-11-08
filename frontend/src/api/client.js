@@ -40,7 +40,7 @@ const request = async (path, { method = "GET", body } = {}) => {
       onUnauthorized();
     }
 
-    const error = new Error(data?.message || "Request failed");
+    const error = new Error(data?.message || "The request could not be completed. Please try again.");
     error.status = response.status;
     throw error;
   }

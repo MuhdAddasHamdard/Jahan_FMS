@@ -94,10 +94,30 @@ test("duplicate admission numbers are rejected", async () => {
   const first = await postJson(baseUrl, "/students", { admissionNo, name: "First" }, token);
   assert.equal(first.status, 201);
 
-  const { status } = await postJson(baseUrl, "/students", { admissionNo, name: "Second" }, token);
+  const duplicateCheck = await getJson(
+    baseUrl,
+    `/students/admission-number-availability?admissionNo=${encodeURIComponent(admissionNo)}`,
+    token,
+  );
+  assert.equal(duplicateCheck.status, 200);
+  assert.equal(duplicateCheck.data.exists, true);
+
+  const { status, data } = await postJson(baseUrl, "/students", { admissionNo, name: "Second" }, token);
   assert.equal(status, 409);
+  assert.match(data.message, /already used by another student/);
 
   await prisma.student.delete({ where: { id: first.data.id } });
+});
+
+test("admission number availability reports unused numbers", async () => {
+  const result = await getJson(
+    baseUrl,
+    `/students/admission-number-availability?admissionNo=${encodeURIComponent(`ADM-${between(1000, 9999)}`)}`,
+    token,
+  );
+
+  assert.equal(result.status, 200);
+  assert.equal(result.data.exists, false);
 });
 
 test("GET /students/:id omits fee and refund data for teachers", async () => {

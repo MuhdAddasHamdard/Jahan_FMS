@@ -123,6 +123,15 @@ export const getAllStudents = async (userId, role, filters = {}) => {
   return students.map(formatStudent);
 };
 
+export const hasAdmissionNumber = async (userId, admissionNo) => {
+  const student = await prisma.student.findFirst({
+    where: { userId, admissionNo },
+    select: { id: true },
+  });
+
+  return Boolean(student);
+};
+
 export const getStudentById = async (userId, id, role) => {
   const isTeacher = role === ROLES.TEACHER;
 

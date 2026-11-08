@@ -10,6 +10,7 @@ import {
 } from "../middleware/student.validation";
 import {
   getStudents,
+  checkAdmissionNumber,
   getStudent,
   createStudentController,
   updateStudentController,
@@ -31,6 +32,7 @@ const staffOnly = authorizeRoleOrPermission(
 );
 
 router.get("/", staffOnly, getStudents);
+router.get("/admission-number-availability", staffOnly, checkAdmissionNumber);
 router.post("/", staffOnly, validateStudent, createStudentController);
 router.get("/me", getMyPortalController);
 router.get("/:id", staffOnly, getStudent);

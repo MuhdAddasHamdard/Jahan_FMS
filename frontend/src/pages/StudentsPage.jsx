@@ -42,12 +42,24 @@ const emptyStudent = {
   installmentCount: "1",
 };
 
-const StudentFields = ({ value, onChange, classes, idPrefix, lockAdmissionNo = false }) => (
+const DUPLICATE_ADMISSION_MESSAGE =
+  "This admission number is already used by another student. Each student must have a unique ID.";
+
+const StudentFields = ({
+  value,
+  onChange,
+  classes,
+  idPrefix,
+  lockAdmissionNo = false,
+  admissionNoError = "",
+  checkingAdmissionNo = false,
+}) => (
   <div className="grid gap-3 sm:grid-cols-2">
     <FormField
       label="Admission number"
       htmlFor={`${idPrefix}-admission`}
-      hint="Your internal student ID"
+      hint={admissionNoError ? undefined : checkingAdmissionNo ? "Checking this student ID..." : "Your internal student ID"}
+      error={admissionNoError}
     >
       <input
         id={`${idPrefix}-admission`}
@@ -56,7 +68,7 @@ const StudentFields = ({ value, onChange, classes, idPrefix, lockAdmissionNo = f
         onChange={(event) => onChange({ ...value, admissionNo: event.target.value })}
         disabled={lockAdmissionNo}
         placeholder="e.g. ADM-2024-015"
-        className={`${inputClass} ${lockAdmissionNo ? "cursor-not-allowed bg-slate-50 text-slate-500" : ""}`}
+        className={`${admissionNoError ? errorInputClass : inputClass} ${lockAdmissionNo ? "cursor-not-allowed bg-slate-50 text-slate-500" : ""}`}
       />
     </FormField>
 
@@ -72,9 +84,9 @@ const StudentFields = ({ value, onChange, classes, idPrefix, lockAdmissionNo = f
     </FormField>
 
     <FormField
-      label="Guardian name"
+      label="Father name"
       htmlFor={`${idPrefix}-guardian`}
-      hint="The parent or guardian responsible for this student and their fees"
+      hint="The student's father's name"
     >
       <input
         id={`${idPrefix}-guardian`}
@@ -413,7 +425,7 @@ const StudentDetail = ({ student, isTeacher, onChanged }) => {
           {detail.class?.teacher?.name || "Not assigned"}
         </p>
         <p className="text-slate-600">
-          <span className="font-semibold text-slate-900">Parent / guardian:</span>{" "}
+          <span className="font-semibold text-slate-900">Father name:</span>{" "}
           {detail.guardianName || "—"}
         </p>
         <p className="text-slate-600">
@@ -613,6 +625,11 @@ const StudentsPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState(emptyStudent);
+  const [admissionCheck, setAdmissionCheck] = useState({
+    admissionNo: "",
+    error: "",
+    checking: false,
+  });
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState(emptyStudent);
   const [deleting, setDeleting] = useState(null);
@@ -651,8 +668,59 @@ const StudentsPage = () => {
     };
   }, []);
 
+  const admissionNo = draft.admissionNo.trim();
+  const admissionNoDuplicateInList = creating &&
+    students.some((student) => student.admissionNo === admissionNo);
+  const currentAdmissionCheck =
+    admissionCheck.admissionNo === admissionNo ? admissionCheck : null;
+  const admissionNoError = admissionNoDuplicateInList
+    ? DUPLICATE_ADMISSION_MESSAGE
+    : currentAdmissionCheck?.error ?? "";
+  const checkingAdmissionNo = Boolean(currentAdmissionCheck?.checking);
+
+  useEffect(() => {
+    if (!creating || !admissionNo) {
+      return undefined;
+    }
+
+    if (admissionNoDuplicateInList) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    const timeoutId = setTimeout(async () => {
+      setAdmissionCheck({ admissionNo, error: "", checking: true });
+      try {
+        const result = await api.get(
+          `/students/admission-number-availability?admissionNo=${encodeURIComponent(admissionNo)}`,
+        );
+        if (!cancelled) {
+          setAdmissionCheck({
+            admissionNo,
+            error: result.exists ? DUPLICATE_ADMISSION_MESSAGE : "",
+            checking: false,
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setAdmissionCheck({
+            admissionNo,
+            error: "Could not check this student ID. Please try again.",
+            checking: false,
+          });
+        }
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [admissionNo, admissionNoDuplicateInList, creating]);
+
   const openCreate = () => {
     setDraft(emptyStudent);
+    setAdmissionCheck({ admissionNo: "", error: "", checking: false });
     setError("");
     setCreating(true);
   };
@@ -661,6 +729,10 @@ const StudentsPage = () => {
     event.preventDefault();
     if (!draft.admissionNo.trim() || !draft.name.trim()) {
       setError("Admission number and student name are required");
+      return;
+    }
+    if (admissionNoError === DUPLICATE_ADMISSION_MESSAGE) {
+      setError(DUPLICATE_ADMISSION_MESSAGE);
       return;
     }
 
@@ -799,7 +871,7 @@ const StudentsPage = () => {
     },
     {
       key: "guardianName",
-      header: "Guardian",
+      header: "Father name",
       sortable: true,
       render: (student) => (
         <div>
@@ -910,7 +982,11 @@ const StudentsPage = () => {
             <button
               type="submit"
               form="student-create-form"
-              disabled={submitting}
+              disabled={
+                submitting ||
+                checkingAdmissionNo ||
+                admissionNoError === DUPLICATE_ADMISSION_MESSAGE
+              }
               className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
             >
               {submitting ? "Saving..." : "Add student"}
@@ -925,6 +1001,8 @@ const StudentsPage = () => {
             onChange={setDraft}
             classes={classes}
             idPrefix="student-create"
+            admissionNoError={admissionNoError}
+            checkingAdmissionNo={checkingAdmissionNo}
           />
           <FeePlanFields
             value={draft}
