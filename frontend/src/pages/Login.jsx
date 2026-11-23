@@ -17,6 +17,7 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({ email: false, password: false });
   const [formError, setFormError] = useState("");
@@ -194,9 +195,20 @@ const Login = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="password" className="mb-2 block text-sm font-medium text-content">
-                    Password
-                  </label>
+                  <div className="mb-2 flex items-baseline justify-between gap-3">
+                    <label htmlFor="password" className="text-sm font-medium text-content">
+                      Password
+                    </label>
+                    <button
+                      type="button"
+                      aria-expanded={recoveryOpen}
+                      aria-controls="password-recovery"
+                      onClick={() => setRecoveryOpen((open) => !open)}
+                      className="rounded text-sm font-semibold text-brand-strong hover:underline focus-visible:ring-2 focus-visible:ring-brand"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                   <div className="relative">
                     <input
                       id="password"
@@ -224,6 +236,17 @@ const Login = () => {
                       {errors.password}
                     </p>
                   )}
+                  <div
+                    id="password-recovery"
+                    hidden={!recoveryOpen}
+                    className="mt-3 space-y-2 rounded-lg border border-line bg-surface-2 p-3 text-sm text-content"
+                  >
+                    <p>Contact your institute administrator with the email address you use to sign in.</p>
+                    <p>
+                      They can set a temporary password under <strong>Users → Edit → New password</strong>.
+                      After signing in, change it in <strong>Settings</strong>.
+                    </p>
+                  </div>
                 </div>
 
                 <button
