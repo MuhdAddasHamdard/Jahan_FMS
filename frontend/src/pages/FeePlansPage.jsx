@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { showMutationFeedback } from "../api/mutationFeedback";
 import PageHeader from "../components/PageHeader";
@@ -20,54 +21,49 @@ const statusClass = (status) => {
   return styles[status] ?? "bg-slate-100 text-slate-600";
 };
 
-const PlanFields = ({ value, onChange, students, feeTypes, idPrefix }) => (
+const PlanFields = ({ value, onChange, students, feeTypes, idPrefix, isNew, showOptions }) => (
   <div className="grid gap-3 sm:grid-cols-2">
-    <FormField
-      label="Student"
-      htmlFor={`${idPrefix}-student`}
-      hint="The student this plan is charged to"
-    >
-      <select
-        id={`${idPrefix}-student`}
-        value={value.studentId}
-        onChange={(event) => onChange({ ...value, studentId: event.target.value })}
-        className={inputClass}
-      >
-        <option value="">
-          {students.length > 0 ? "Select student" : "No students available"}
-        </option>
-        {students.map((student) => (
-          <option key={student.id} value={student.id}>
-            {student.name} ({student.admissionNo})
-          </option>
-        ))}
-      </select>
-    </FormField>
+    {isNew && (
+      <FormField label="Student" htmlFor={`${idPrefix}-student`} className="sm:col-span-2">
+        <select
+          id={`${idPrefix}-student`}
+          value={value.studentId}
+          onChange={(event) => onChange({ ...value, studentId: event.target.value })}
+          className={inputClass}
+        >
+          <option value="">{students.length ? "Select student" : "No students available"}</option>
+          {students.map((student) => (
+            <option key={student.id} value={student.id}>
+              {student.name} ({student.admissionNo})
+            </option>
+          ))}
+        </select>
+      </FormField>
+    )}
 
-    <FormField
-      label="Fee type"
-      htmlFor={`${idPrefix}-fee-type`}
-      hint="The fee being charged, e.g. tuition, admission or session fee"
-    >
+    <FormField label="Fee" htmlFor={`${idPrefix}-fee-type`}>
       <select
         id={`${idPrefix}-fee-type`}
         value={value.feeTypeId}
-        onChange={(event) => onChange({ ...value, feeTypeId: event.target.value })}
+        onChange={(event) => {
+          const feeTypeId = event.target.value;
+          const fee = feeTypes.find((item) => String(item.id) === feeTypeId);
+          onChange({
+            ...value,
+            feeTypeId,
+            totalAmount: isNew ? String(fee?.amount ?? "") : value.totalAmount,
+          });
+        }}
         className={inputClass}
       >
-        <option value="">Select fee type</option>
+        <option value="">Select fee</option>
         {feeTypes.map((feeType) => (
-          <option key={feeType.id} value={feeType.id}>
-            {feeType.name}
-          </option>
+          <option key={feeType.id} value={feeType.id}>{feeType.name}</option>
         ))}
       </select>
     </FormField>
 
-    <FormField
-      label="Fee amount before discount"
-      htmlFor={`${idPrefix}-total`}
-    >
+    <FormField label={value.discountType === "NONE" ? "Amount" : "Amount before discount"} htmlFor={`${idPrefix}-total`}>
       <input
         id={`${idPrefix}-total`}
         type="number"
@@ -75,75 +71,64 @@ const PlanFields = ({ value, onChange, students, feeTypes, idPrefix }) => (
         step="0.01"
         value={value.totalAmount}
         onChange={(event) => onChange({ ...value, totalAmount: event.target.value })}
-        placeholder="e.g. 15000"
         className={inputClass}
       />
     </FormField>
 
-    <FormField
-      label="Discount"
-      htmlFor={`${idPrefix}-discount-type`}
-      hint="Applied once to the whole fee plan"
-    >
-      <select
-        id={`${idPrefix}-discount-type`}
-        value={value.discountType}
-        onChange={(event) =>
-          onChange({
-            ...value,
-            discountType: event.target.value,
-            discountValue: event.target.value === "NONE" ? "0" : value.discountValue,
-          })
-        }
-        className={inputClass}
-      >
-        <option value="NONE">No discount</option>
-        <option value="PERCENTAGE">Percentage</option>
-        <option value="FIXED">Fixed amount</option>
-      </select>
-    </FormField>
-
-    {value.discountType !== "NONE" && (
-      <FormField
-        label={value.discountType === "PERCENTAGE" ? "Discount percent" : "Discount amount"}
-        htmlFor={`${idPrefix}-discount-value`}
-        hint={value.discountType === "PERCENTAGE" ? "From 0 to 100%" : "In the same currency as the fee"}
-      >
-        <input
-          id={`${idPrefix}-discount-value`}
-          type="number"
-          min="0"
-          max={value.discountType === "PERCENTAGE" ? "100" : undefined}
-          step="0.01"
-          value={value.discountValue}
-          onChange={(event) =>
-            onChange({ ...value, discountValue: event.target.value })
-          }
-          className={inputClass}
-        />
-      </FormField>
-    )}
-
-    <FormField
-      label="Number of installments"
-      htmlFor={`${idPrefix}-count`}
-      hint="Split the total into this many payments"
-    >
-      <input
-        id={`${idPrefix}-count`}
-        type="number"
-        min="1"
-        value={value.installmentCount}
-        onChange={(event) => onChange({ ...value, installmentCount: event.target.value })}
-        placeholder="e.g. 3"
-        className={inputClass}
-      />
-    </FormField>
+    <details open={showOptions} className="rounded-lg border border-line p-3 sm:col-span-2">
+      <summary className="cursor-pointer text-sm font-semibold text-content">Discounts and installments</summary>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <FormField label="Payments" htmlFor={`${idPrefix}-count`} hint="Set to 1 to charge the full amount at once.">
+          <input
+            id={`${idPrefix}-count`}
+            type="number"
+            min="1"
+            step="1"
+            value={value.installmentCount}
+            onChange={(event) => onChange({ ...value, installmentCount: event.target.value })}
+            className={inputClass}
+          />
+        </FormField>
+        <FormField label="Discount" htmlFor={`${idPrefix}-discount-type`}>
+          <select
+            id={`${idPrefix}-discount-type`}
+            value={value.discountType}
+            onChange={(event) => onChange({
+              ...value,
+              discountType: event.target.value,
+              discountValue: event.target.value === "NONE" ? "0" : value.discountValue,
+            })}
+            className={inputClass}
+          >
+            <option value="NONE">No discount</option>
+            <option value="PERCENTAGE">Percentage</option>
+            <option value="FIXED">Fixed amount</option>
+          </select>
+        </FormField>
+        {value.discountType !== "NONE" && (
+          <FormField
+            label={value.discountType === "PERCENTAGE" ? "Discount percent" : "Discount amount"}
+            htmlFor={`${idPrefix}-discount-value`}
+          >
+            <input
+              id={`${idPrefix}-discount-value`}
+              type="number"
+              min="0"
+              max={value.discountType === "PERCENTAGE" ? "100" : undefined}
+              step="0.01"
+              value={value.discountValue}
+              onChange={(event) => onChange({ ...value, discountValue: event.target.value })}
+              className={inputClass}
+            />
+          </FormField>
+        )}
+      </div>
+    </details>
   </div>
 );
 
 const PaymentForm = ({ installment, onSubmit, onCancel }) => {
-  const remaining = Math.max(0, installment.amount - installment.paidAmount);
+  const remaining = Math.max(0, Math.round((installment.amount - installment.paidAmount) * 100) / 100);
   const [amount, setAmount] = useState(String(remaining));
   const [date, setDate] = useState("");
   const [error, setError] = useState("");
@@ -185,6 +170,7 @@ const PaymentForm = ({ installment, onSubmit, onCancel }) => {
             id={`pay-${installment.id}`}
             type="number"
             min="0"
+            max={remaining}
             step="0.01"
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
@@ -226,7 +212,7 @@ const PaymentForm = ({ installment, onSubmit, onCancel }) => {
   );
 };
 
-const PlanDetailPanel = ({ plan, onChanged }) => {
+const PlanDetailPanel = ({ plan, onChanged, closePayment }) => {
   const toast = useToast();
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -258,16 +244,17 @@ const PlanDetailPanel = ({ plan, onChanged }) => {
     return () => {
       cancelled = true;
     };
-  }, [plan.id, toast]);
+  }, [plan.id, plan.paidAmount, toast]);
 
   const handleCollect = async (payload) => {
     try {
       const result = await api.post("/fees/payments", payload, { sourcePath: `/fees/plans/${plan.id}` });
       const synced = showMutationFeedback(toast, result, `Payment collected for ${plan.student.name}`);
       setCollectingId(null);
+      closePayment?.();
       if (!synced) return;
-      await refresh();
-      onChanged?.();
+      if (!closePayment) await refresh();
+      await onChanged?.();
     } catch (err) {
       toast.error(err.message);
     }
@@ -282,7 +269,35 @@ const PlanDetailPanel = ({ plan, onChanged }) => {
   }
 
   if (!detail) {
-    return <p className="text-sm text-slate-400">Could not load plan details.</p>;
+    return <p className="text-sm text-muted">Could not load fee details.</p>;
+  }
+
+  if (closePayment) {
+    const unpaid = detail.installments.filter((item) => item.amount > item.paidAmount);
+    const selected = unpaid.find((item) => item.id === collectingId) ?? unpaid[0];
+    if (!selected) return <p className="text-sm text-muted">This fee has been paid in full.</p>;
+
+    return (
+      <>
+        {unpaid.length > 1 && (
+          <FormField label="Installment" htmlFor="fee-payment-installment">
+            <select
+              id="fee-payment-installment"
+              value={selected.id}
+              onChange={(event) => setCollectingId(Number(event.target.value))}
+              className={inputClass}
+            >
+              {unpaid.map((item) => (
+                <option key={item.id} value={item.id}>
+                  Due {formatDate(item.dueDate)} · {formatNumber(item.amount - item.paidAmount)} remaining
+                </option>
+              ))}
+            </select>
+          </FormField>
+        )}
+        <PaymentForm key={selected.id} installment={selected} onSubmit={handleCollect} onCancel={closePayment} />
+      </>
+    );
   }
 
   return (
@@ -337,6 +352,7 @@ const PlanDetailPanel = ({ plan, onChanged }) => {
                 </span>
                 {collectingId !== installment.id && installment.status !== "PAID" && (
                   <button
+                    type="button"
                     onClick={() => setCollectingId(installment.id)}
                     className="rounded-md bg-teal-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-teal-700"
                   >
@@ -377,6 +393,7 @@ const FeePlansPage = () => {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [collecting, setCollecting] = useState(null);
   const [draft, setDraft] = useState(emptyPlan);
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState(emptyPlan);
@@ -386,7 +403,7 @@ const FeePlansPage = () => {
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([api.get("/fees/plans"), api.get("/students"), api.get("/fees/types")])
+    Promise.all([api.get("/fees/plans"), api.get("/students").catch(() => []), api.get("/fees/types")])
       .then(([planList, studentList, feeTypeList]) => {
         if (!cancelled) {
           setPlans(planList);
@@ -414,7 +431,7 @@ const FeePlansPage = () => {
 
   const validatePlan = (value) => {
     if (!value.feeTypeId) {
-      return "Select a fee type";
+      return "Select a fee";
     }
     if (!value.totalAmount || Number(value.totalAmount) <= 0) {
       return "Total amount must be greater than zero";
@@ -464,7 +481,7 @@ const FeePlansPage = () => {
       });
       setCreating(false);
       setDraft(emptyPlan);
-      const synced = showMutationFeedback(toast, result, "Fee plan created");
+      const synced = showMutationFeedback(toast, result, "Fee assigned");
       if (!synced) return;
       await refreshPlans();
     } catch (err) {
@@ -509,7 +526,7 @@ const FeePlansPage = () => {
         discountValue: Number(editValue.discountValue) || 0,
       });
       setEditing(null);
-      const synced = showMutationFeedback(toast, result, "Fee plan updated");
+      const synced = showMutationFeedback(toast, result, "Fee updated");
       if (!synced) return;
       await refreshPlans();
     } catch (err) {
@@ -523,7 +540,7 @@ const FeePlansPage = () => {
     setDeleteBusy(true);
     try {
       const result = await api.delete(`/fees/plans/${deleting.id}`);
-      const synced = showMutationFeedback(toast, result, "Fee plan deleted");
+      const synced = showMutationFeedback(toast, result, "Fee removed");
       setDeleting(null);
       if (!synced) return;
       await refreshPlans();
@@ -550,15 +567,13 @@ const FeePlansPage = () => {
     },
     {
       key: "feeType",
-      header: "Fee type",
+      header: "Fee",
       sortable: true,
       sortValue: (plan) => plan.feeType?.name ?? "",
       render: (plan) => (
         <div>
           <p className="text-slate-700">{plan.feeType?.name ?? "—"}</p>
-          <p className="text-xs text-slate-500">
-            {plan.installmentCount} installment{plan.installmentCount === 1 ? "" : "s"}
-          </p>
+          {plan.installmentCount > 1 && <p className="text-xs text-slate-500">{plan.installmentCount} installments</p>}
         </div>
       ),
     },
@@ -613,13 +628,28 @@ const FeePlansPage = () => {
         </span>
       ),
     },
+    {
+      key: "payment",
+      header: "Payment",
+      render: (plan) => plan.balance > 0 && (
+        <button
+          type="button"
+          onClick={() => setCollecting(plan)}
+          className="btn btn-secondary whitespace-nowrap"
+          aria-label={`Collect payment for ${plan.student.name} · ${plan.feeType.name}`}
+        >
+          Collect payment
+        </button>
+      ),
+    },
   ];
 
   return (
     <div>
       <PageHeader
-        title="Fee Plans"
-        description="Assign a fee type to a student, split it into installments and collect payments."
+        title="Fees"
+        description="Assign fees, collect payments, and see what students still owe."
+        action={<Link to="/fees/settings" className="btn btn-secondary">Fee Settings</Link>}
       />
 
       {error && !creating && (
@@ -629,12 +659,12 @@ const FeePlansPage = () => {
       )}
 
       <DataTable
-        title="All fee plans"
+        title="Student fees"
         count={plans.length}
         loading={loading}
         rows={plans}
         columns={columns}
-        searchPlaceholder="Search by student or fee type..."
+        searchPlaceholder="Search by student or fee..."
         searchValue={(plan) =>
           [plan.student?.name, plan.student?.admissionNo, plan.feeType?.name]
             .filter(Boolean)
@@ -654,8 +684,8 @@ const FeePlansPage = () => {
           },
         ]}
         defaultSort={{ key: "createdAt", direction: "desc" }}
-        addButton={{ label: "Create fee plan", onClick: openCreate }}
-        emptyMessage="No fee plans yet."
+        addButton={{ label: "Assign fee", onClick: openCreate }}
+        emptyMessage="No fees assigned yet."
         renderDetail={(plan) => (
           <PlanDetailPanel plan={plan} onChanged={refreshPlans} />
         )}
@@ -671,9 +701,25 @@ const FeePlansPage = () => {
       />
 
       <Modal
+        open={Boolean(collecting)}
+        onClose={() => setCollecting(null)}
+        title="Collect payment"
+        description={collecting ? `${collecting.student.name} · ${collecting.feeType.name}` : undefined}
+      >
+        {collecting && (
+          <PlanDetailPanel
+            key={collecting.id}
+            plan={collecting}
+            onChanged={refreshPlans}
+            closePayment={() => setCollecting(null)}
+          />
+        )}
+      </Modal>
+
+      <Modal
         open={creating}
         onClose={() => setCreating(false)}
-        title="Create a fee plan"
+        title="Assign fee"
         footer={
           <>
             <button
@@ -686,22 +732,26 @@ const FeePlansPage = () => {
             <button
               type="submit"
               form="fee-plan-create-form"
-              disabled={submitting}
+              disabled={submitting || !students.length || !feeTypes.length}
               className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
             >
-              {submitting ? "Creating..." : "Create fee plan"}
+              {submitting ? "Assigning…" : "Assign fee"}
             </button>
           </>
         }
       >
         <form id="fee-plan-create-form" onSubmit={handleCreate} className="space-y-4">
           {error && <Alert type="error" message={error} />}
+          {!loading && feeTypes.length === 0 && (
+            <p className="text-sm text-muted">Create a template in <Link to="/fees/settings" className="font-semibold underline">Fee Settings</Link> first.</p>
+          )}
           <PlanFields
             value={draft}
             onChange={setDraft}
             students={students}
             feeTypes={feeTypes}
             idPrefix="plan-create"
+            isNew
           />
         </form>
       </Modal>
@@ -709,7 +759,7 @@ const FeePlansPage = () => {
       <Modal
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
-        title="Edit fee plan"
+        title="Edit fee"
         description={
           editing ? `${editing.student.name} · ${editing.feeType.name}` : undefined
         }
@@ -737,22 +787,22 @@ const FeePlansPage = () => {
           <PlanFields
             value={editValue}
             onChange={setEditValue}
-            students={students}
             feeTypes={feeTypes}
             idPrefix="plan-edit"
+            showOptions={editing?.installmentCount > 1 || editing?.discountAmount > 0}
           />
           <p className="text-xs text-amber-700">
-            Plans that already have collected payments cannot be edited.
+            Fees with recorded payments cannot be edited.
           </p>
         </form>
       </Modal>
 
       <ConfirmDialog
         open={Boolean(deleting)}
-        title="Delete fee plan"
+        title="Remove fee"
         message={
           deleting
-            ? `The fee plan for ${deleting.student?.name} (${deleting.feeType?.name}) will be removed. Plans with payments cannot be deleted.`
+            ? `Remove ${deleting.feeType?.name} for ${deleting.student?.name}? Fees with recorded payments cannot be removed.`
             : ""
         }
         busy={deleteBusy}

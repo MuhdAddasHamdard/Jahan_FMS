@@ -170,13 +170,11 @@ const FeePlanFields = ({ value, onChange, feeTypes, idPrefix }) => {
   );
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-        Fee plan (optional)
-      </h3>
-      <div className="grid gap-3 sm:grid-cols-3">
+    <details className="rounded-xl border border-line bg-surface-2 p-4">
+      <summary className="cursor-pointer text-sm font-semibold text-content">Assign a fee (optional)</summary>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
         <FormField
-          label="Fee type"
+          label="Fee"
           htmlFor={`${idPrefix}-fee-type`}
           hint="Leave empty to set up fees later"
         >
@@ -188,7 +186,7 @@ const FeePlanFields = ({ value, onChange, feeTypes, idPrefix }) => {
             }
             className={inputClass}
           >
-            <option value="">No fee plan</option>
+            <option value="">No fee</option>
             {feeTypes.map((type) => (
               <option key={type.id} value={type.id}>
                 {type.name} · {formatNumber(type.amount)}
@@ -242,7 +240,7 @@ const FeePlanFields = ({ value, onChange, feeTypes, idPrefix }) => {
           />
         </FormField>
       </div>
-    </div>
+    </details>
   );
 };
 

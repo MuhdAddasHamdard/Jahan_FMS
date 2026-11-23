@@ -42,15 +42,8 @@ const NAV_SECTIONS = [
     title: "Finance",
     items: [
       {
-        to: "/fee-types",
-        label: "Fee Types",
-        icon: "document",
-        roles: ["ADMIN", "FINANCE"],
-        permission: PERMISSIONS.FINANCE,
-      },
-      {
-        to: "/fee-plans",
-        label: "Fee Plans",
+        to: "/fees",
+        label: "Fees",
         icon: "wallet",
         roles: ["ADMIN", "FINANCE"],
         permission: PERMISSIONS.FINANCE,
@@ -120,8 +113,8 @@ const ROUTE_META = {
   "/reports/institute": { title: "Institute Report", icon: "office" },
   "/classes": { title: "Classes", icon: "book" },
   "/students": { title: "Students", icon: "student" },
-  "/fee-types": { title: "Fee Types", icon: "document" },
-  "/fee-plans": { title: "Fee Plans", icon: "wallet" },
+  "/fees": { title: "Fees", icon: "wallet" },
+  "/fees/settings": { title: "Fee Settings", icon: "settings" },
   "/receipts": { title: "Receipts", icon: "receipt" },
   "/refunds": { title: "Refunds", icon: "refund" },
   "/staff": { title: "Staff", icon: "userGroup" },

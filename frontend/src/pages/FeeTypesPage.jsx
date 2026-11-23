@@ -12,20 +12,14 @@ import { formatNumber } from "../utils/format";
 
 const PERIODS = ["MONTHLY", "SESSION", "ONE_TIME"];
 
-const PERIOD_HINTS = {
-  MONTHLY: "Charged every month",
-  SESSION: "Charged once per academic session",
-  ONE_TIME: "Charged a single time (e.g. admission)",
-};
-
 const emptyFeeType = { name: "", amount: "", period: "MONTHLY" };
 
 const FeeTypeFields = ({ value, onChange, idPrefix }) => (
-  <div className="grid gap-3 sm:grid-cols-3">
+  <div className="grid gap-3 sm:grid-cols-2">
     <FormField
       label="Fee name"
       htmlFor={`${idPrefix}-name`}
-      hint="How this fee appears on plans and receipts"
+      hint="Shown on student fees and receipts"
     >
       <input
         id={`${idPrefix}-name`}
@@ -48,24 +42,29 @@ const FeeTypeFields = ({ value, onChange, idPrefix }) => (
         className={inputClass}
       />
     </FormField>
-    <FormField
-      label="Billing period"
-      htmlFor={`${idPrefix}-period`}
-      hint={PERIOD_HINTS[value.period]}
-    >
-      <select
-        id={`${idPrefix}-period`}
-        value={value.period}
-        onChange={(event) => onChange({ ...value, period: event.target.value })}
-        className={inputClass}
-      >
-        {PERIODS.map((periodOption) => (
-          <option key={periodOption} value={periodOption}>
-            {periodOption.replace("_", " ")}
-          </option>
-        ))}
-      </select>
-    </FormField>
+    <details className="sm:col-span-2">
+      <summary className="cursor-pointer text-sm font-semibold text-content">Period label (optional)</summary>
+      <div className="mt-3">
+        <FormField
+          label="Period label"
+          htmlFor={`${idPrefix}-period`}
+          hint="Used to organize templates. Assign each charge from the Fees page."
+        >
+          <select
+            id={`${idPrefix}-period`}
+            value={value.period}
+            onChange={(event) => onChange({ ...value, period: event.target.value })}
+            className={inputClass}
+          >
+            {PERIODS.map((periodOption) => (
+              <option key={periodOption} value={periodOption}>
+                {periodOption.replace("_", " ")}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </div>
+    </details>
   </div>
 );
 
@@ -216,7 +215,7 @@ const FeeTypesPage = () => {
     },
     {
       key: "period",
-      header: "Billing period",
+      header: "Period label",
       sortable: true,
       render: (feeType) => (
         <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
@@ -241,8 +240,9 @@ const FeeTypesPage = () => {
   return (
     <div>
       <PageHeader
-        title="Fee Types"
-        description="Define the fees you charge, like tuition, admission and session charges."
+        title="Fee Settings"
+        description="Manage reusable fee templates and their default amounts."
+        breadcrumbs={[{ label: "Fees", to: "/fees" }, { label: "Fee Settings" }]}
       />
 
       {error && !creating && (
@@ -252,12 +252,12 @@ const FeeTypesPage = () => {
       )}
 
       <DataTable
-        title="All fee types"
+        title="Fee templates"
         count={feeTypes.length}
         loading={loading}
         rows={feeTypes}
         columns={columns}
-        searchPlaceholder="Search fee types..."
+        searchPlaceholder="Search fee templates..."
         searchKeys={["name", "period"]}
         defaultSort={{ key: "createdAt", direction: "desc" }}
         filters={[
@@ -274,8 +274,8 @@ const FeeTypesPage = () => {
             value: (feeType) => feeType.period,
           },
         ]}
-        addButton={{ label: "Add fee type", onClick: openCreate }}
-        emptyMessage="No fee types yet."
+        addButton={{ label: "Add fee template", onClick: openCreate }}
+        emptyMessage="No fee templates yet."
         rowActions={(feeType) => [
           { label: "Edit", icon: "edit", onClick: () => openEdit(feeType) },
           {
@@ -290,8 +290,7 @@ const FeeTypesPage = () => {
       <Modal
         open={creating}
         onClose={() => setCreating(false)}
-        title="Add fee type"
-        description="Define a fee you can then assign to students through fee plans."
+        title="Add fee template"
         footer={
           <>
             <button
@@ -321,7 +320,7 @@ const FeeTypesPage = () => {
       <Modal
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
-        title="Edit fee type"
+        title="Edit fee template"
         description={editing ? `Editing "${editing.name}"` : undefined}
         footer={
           <>
@@ -350,7 +349,7 @@ const FeeTypesPage = () => {
 
       <ConfirmDialog
         open={Boolean(deleting)}
-        title="Delete fee type"
+        title="Delete fee template"
         message={
           deleting
             ? `"${deleting.name}" will be removed. Fee types already used by a fee plan cannot be deleted.`

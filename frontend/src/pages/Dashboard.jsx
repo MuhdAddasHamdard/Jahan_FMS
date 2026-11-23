@@ -239,7 +239,7 @@ const Dashboard = () => {
               { to: "/users", label: "Add users", icon: "users" },
               { to: "/classes", label: "Create classes", icon: "book" },
               { to: "/students", label: "Add students", icon: "student" },
-              { to: "/fee-plans", label: "Set up fees", icon: "wallet" },
+              { to: "/fees", label: "Set up fees", icon: "wallet" },
             ].map((item, index) => (
               <Link
                 key={item.to}
@@ -380,7 +380,7 @@ const Dashboard = () => {
             <EmptyState
               icon="receipt"
               title="No receipts yet"
-              description="Collect your first payment from the Fee Plans page and it will appear here."
+              description="Record your first payment on the Fees page and it will appear here."
             />
           </div>
         ) : (

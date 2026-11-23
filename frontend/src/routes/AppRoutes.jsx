@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link, Navigate } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
 import { ThemeProvider } from "../theme/ThemeProvider";
 import ProtectedRoute from "../auth/ProtectedRoute";
@@ -99,8 +99,10 @@ const AppRoutes = () => {
                   </RoleRoute>
                 }
               />
+              <Route path="/fee-types" element={<Navigate to="/fees/settings" replace />} />
+              <Route path="/fee-plans" element={<Navigate to="/fees" replace />} />
               <Route
-                path="/fee-types"
+                path="/fees/settings"
                 element={
                   <RoleRoute roles={financeRoles} permission={PERMISSIONS.FINANCE}>
                     <FeeTypesPage />
@@ -108,7 +110,7 @@ const AppRoutes = () => {
                 }
               />
               <Route
-                path="/fee-plans"
+                path="/fees"
                 element={
                   <RoleRoute roles={financeRoles} permission={PERMISSIONS.FINANCE}>
                     <FeePlansPage />
