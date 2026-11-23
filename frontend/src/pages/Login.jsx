@@ -16,6 +16,7 @@ const Login = () => {
   const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({ email: false, password: false });
   const [formError, setFormError] = useState("");
@@ -196,16 +197,28 @@ const Login = () => {
                   <label htmlFor="password" className="mb-2 block text-sm font-medium text-content">
                     Password
                   </label>
-                  <input
-                    id="password"
-                    type="password"
-                    name="password"
-                    value={password}
-                    onChange={(event) => updateField("password", event.target.value)}
-                    placeholder="Enter your password"
-                    aria-invalid={Boolean(errors.password)}
-                    className={fieldClass(errors.password)}
-                  />
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={passwordVisible ? "text" : "password"}
+                      name="password"
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(event) => updateField("password", event.target.value)}
+                      placeholder="Enter your password"
+                      aria-invalid={Boolean(errors.password)}
+                      className={`${fieldClass(errors.password)} !pr-14`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPasswordVisible((visible) => !visible)}
+                      aria-controls="password"
+                      aria-label={passwordVisible ? "Hide password" : "Show password"}
+                      className="absolute inset-y-1 right-1 flex w-10 items-center justify-center rounded-lg text-muted transition hover:bg-surface-2 hover:text-content focus-visible:ring-2 focus-visible:ring-brand"
+                    >
+                      <Icon name={passwordVisible ? "eyeOff" : "eye"} className="h-5 w-5" />
+                    </button>
+                  </div>
                   {errors.password && (
                     <p className="mt-1.5 text-sm text-[color:var(--danger)]">
                       {errors.password}
