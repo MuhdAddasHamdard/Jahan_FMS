@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import prisma from "./prisma";
 import { auditSensitiveChange } from "./middleware/audit.middleware";
 import userRouter from "./routes/user.router";
 import dashboardRouter from "./routes/dashboard.router";
@@ -13,6 +14,7 @@ import staffRouter from "./routes/staff.router";
 import salaryRouter, { salaryPaymentRouter } from "./routes/salary.router";
 import expenseRouter from "./routes/expense.router";
 import settingsRouter from "./routes/settings.router";
+import offlineRouter from "./routes/offline.router";
 
 const app = express();
 const allowedOrigins = new Set(
@@ -29,7 +31,7 @@ app.use(
       callback(null, !origin || allowedOrigins.has(origin));
     },
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Sync-Operation", "X-Sync-Device", "X-Sync-Revision"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Sync-Operation", "X-Sync-Device", "X-Sync-Revision", "X-Offline-Device"],
     exposedHeaders: ["X-Sync-Revision"],
     maxAge: 600,
   }),
@@ -47,10 +49,25 @@ app.use("/staff", staffRouter);
 app.use("/salaries", salaryRouter);
 app.use("/salary-payments", salaryPaymentRouter);
 app.use("/expenses", expenseRouter);
+app.use("/settings/offline", offlineRouter);
 app.use("/settings", settingsRouter);
 
 app.get("/", (req, res) => {
   res.send("Institute Management System API");
+});
+
+app.get("/health/ready", async (_req, res) => {
+  const revision = process.env.JAHAN_RELEASE_SHA || "development";
+  res.set("Cache-Control", "no-store");
+  try {
+    await prisma.$queryRaw`SELECT EXISTS (SELECT "sessionVersion" FROM "User"),
+      EXISTS (SELECT "offlineMaxDays" FROM "InstituteSettings"),
+      EXISTS (SELECT "trusted" FROM "OfflineDevice"),
+      EXISTS (SELECT "recordKeys" FROM "SyncMutation")`;
+    return res.json({ status: "ready", revision });
+  } catch {
+    return res.status(503).json({ status: "unavailable", revision });
+  }
 });
 
 app.use((error, req, res, next) => {

@@ -2,6 +2,11 @@ import app from "../src/app";
 import prisma from "../src/prisma";
 import { createUserService } from "../src/services/user.service";
 
+const databaseName = new URL(process.env.DATABASE_URL).pathname.slice(1);
+if (!/(?:^|[-_])test(?:[-_]|$)/i.test(databaseName)) {
+  throw new Error("Integration tests require a dedicated PostgreSQL database with 'test' in its name.");
+}
+
 export const startServer = async () => {
   const server = app.listen(0);
   await new Promise((resolve) => server.once("listening", resolve));
@@ -90,5 +95,25 @@ export const createTestUser = async (userData) => ({
 // Institute data is shared between ADMIN and FINANCE, so every test file must
 // leave no @example.com users behind or the next run inherits their records.
 export const cleanupTestUsers = async () => {
-  await prisma.user.deleteMany({ where: { email: { endsWith: "@example.com" } } });
+  await prisma.$transaction(async (tx) => {
+    const users = await tx.user.findMany({ where: { email: { endsWith: "@example.com" } }, select: { id: true } });
+    const ids = users.map(({ id }) => id);
+    if (!ids.length) return;
+    const owned = { where: { userId: { in: ids } } };
+    await tx.expense.deleteMany(owned);
+    await tx.refund.deleteMany(owned);
+    await tx.receipt.deleteMany(owned);
+    await tx.feeInstallment.deleteMany(owned);
+    await tx.studentFee.deleteMany(owned);
+    await tx.feeType.deleteMany(owned);
+    await tx.student.deleteMany(owned);
+    await tx.salaryPayment.deleteMany(owned);
+    await tx.staffSalary.deleteMany(owned);
+    await tx.staff.deleteMany(owned);
+    await tx.classSchedule.deleteMany(owned);
+    await tx.courseMaterial.deleteMany(owned);
+    await tx.class.deleteMany(owned);
+    await tx.syncMutation.deleteMany({ where: { actorId: { in: ids } } });
+    await tx.user.deleteMany({ where: { id: { in: ids } } });
+  });
 };

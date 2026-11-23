@@ -23,7 +23,7 @@ import {
   updateManagedUser,
   setUserRole,
   setUserPermissions,
-  removeUser,
+  changeAccountStatus,
 } from "../controllers/user.controller";
 
 import { authenticateUser } from "../middleware/auth.middleware";
@@ -89,6 +89,7 @@ router.patch(
   validateManagedUserUpdate,
   updateManagedUser,
 );
-router.delete("/:id", authenticateUser, authorizeRole(ROLES.ADMIN), removeUser);
+router.patch("/:id/status", authenticateUser, authorizeRole(ROLES.ADMIN), changeAccountStatus);
+router.delete("/:id", authenticateUser, authorizeRole(ROLES.ADMIN), changeAccountStatus);
 
 export default router;

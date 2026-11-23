@@ -48,8 +48,8 @@ const UsersPage = () => {
     role: "TEACHER",
   });
   const [createBusy, setCreateBusy] = useState(false);
-  const [deleting, setDeleting] = useState(null);
-  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [statusTarget, setStatusTarget] = useState(null);
+  const [statusBusy, setStatusBusy] = useState(false);
 
   const syncRoles = (data) =>
     setSelectedRoles(Object.fromEntries(data.map((user) => [user.id, user.role])));
@@ -216,18 +216,19 @@ const UsersPage = () => {
     }
   };
 
-  const handleDelete = async () => {
-    setDeleteBusy(true);
+  const handleStatusChange = async () => {
+    setStatusBusy(true);
     try {
-      await api.delete(`/users/${deleting.id}`);
-      toast.success("User deleted");
-      setDeleting(null);
+      const active = Boolean(statusTarget.deactivatedAt);
+      await api.patch(`/users/${statusTarget.id}/status`, { active });
+      toast.success(active ? "Account reactivated" : "Account deactivated");
+      setStatusTarget(null);
       await refresh();
     } catch (err) {
       toast.error(err.message);
-      setDeleting(null);
+      setStatusTarget(null);
     } finally {
-      setDeleteBusy(false);
+      setStatusBusy(false);
     }
   };
 
@@ -263,6 +264,11 @@ const UsersPage = () => {
           {ROLE_BADGE[user.role]?.label || user.role}
         </span>
       ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (user) => user.deactivatedAt ? "Deactivated" : "Active",
     },
     {
       key: "changeRole",
@@ -363,10 +369,10 @@ const UsersPage = () => {
           ];
           if (!isSelf) {
             actions.push({
-              label: "Delete",
-              icon: "trash",
-              tone: "danger",
-              onClick: () => setDeleting(user),
+              label: user.deactivatedAt ? "Reactivate" : "Deactivate",
+              icon: user.deactivatedAt ? "check" : "logout",
+              tone: user.deactivatedAt ? undefined : "danger",
+              onClick: () => setStatusTarget(user),
             });
           }
           return actions;
@@ -598,16 +604,16 @@ const UsersPage = () => {
       </Modal>
 
       <ConfirmDialog
-        open={Boolean(deleting)}
-        title="Delete user"
-        message={
-          deleting
-            ? `"${deleting.name}" will be removed. Any linked records (students, staff, fees) will also be removed.`
-            : ""
-        }
-        busy={deleteBusy}
-        onConfirm={handleDelete}
-        onCancel={() => setDeleting(null)}
+        open={Boolean(statusTarget)}
+        title={statusTarget?.deactivatedAt ? "Reactivate account" : "Deactivate account"}
+        confirmLabel={statusTarget?.deactivatedAt ? "Reactivate" : "Deactivate"}
+        tone={statusTarget?.deactivatedAt ? "default" : "danger"}
+        message={statusTarget?.deactivatedAt
+          ? `Allow ${statusTarget.name} to sign in again?`
+          : `Remove sign-in access for ${statusTarget?.name}? Their institute records and attribution are preserved.`}
+        busy={statusBusy}
+        onConfirm={handleStatusChange}
+        onCancel={() => setStatusTarget(null)}
       />
     </div>
   );

@@ -15,6 +15,11 @@ app.set("trust proxy", trustProxyHops);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, "0.0.0.0", (error) => {
+  if (error) {
+    console.error(`Could not start API on port ${PORT}: ${error.code ?? error.message}`);
+    process.exitCode = 1;
+    return;
+  }
   console.log(`Server running on port ${PORT}`);
 });

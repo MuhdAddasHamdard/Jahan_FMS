@@ -38,6 +38,11 @@ profile. Use a trusted device and avoid clearing site data while changes are
 pending. Signing out clears downloaded records for the signed-out account and
 keeps its pending submissions available after signing in again.
 
+Administrators can limit downloads to approved browsers and choose a retention
+window in **Settings → Offline access**. Changes to the policy are picked up
+when a browser reconnects. Revoking download access clears downloaded records
+and preserves the pending submissions for the same account to sync online.
+
 Host the production build over HTTPS (localhost works for testing). Serve
 `service-worker.js` and the generated assets from the frontend origin and
 configure navigation routes to serve `index.html`. Deploy the backend migration

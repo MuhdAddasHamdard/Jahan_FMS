@@ -19,7 +19,10 @@ export const authenticateUser = async (req, res, next) => {
 
   let decoded;
   try {
-    decoded = jwt.verify(token, process.env.JWT_SECRET);
+    decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
+    if (!Number.isInteger(decoded.id) || !Number.isInteger(decoded.sessionVersion)) {
+      throw new Error("Invalid session claims");
+    }
   } catch (error) {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
@@ -27,10 +30,10 @@ export const authenticateUser = async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: Number(decoded.id) },
-      select: { id: true, role: true, permissions: true },
+      select: { id: true, role: true, permissions: true, deactivatedAt: true, sessionVersion: true },
     });
 
-    if (!user) {
+    if (!user || user.deactivatedAt || user.sessionVersion !== decoded.sessionVersion) {
       return res.status(401).json({ message: "Invalid or expired token" });
     }
 

@@ -147,9 +147,6 @@ before(async () => {
 });
 
 after(async () => {
-  await prisma.user.deleteMany({
-    where: { id: { in: [adminId, teacherId] } },
-  });
   await cleanupTestUsers();
   await new Promise((resolve) => server.close(resolve));
 });

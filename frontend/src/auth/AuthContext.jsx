@@ -101,12 +101,19 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback(async (email, password) => {
     const data = await api.post("/users/login", { email, password });
 
-    localStorage.setItem(TOKEN_STORAGE_KEY, data.token);
     setAuthToken(data.token);
+    let profile;
+    try {
+      profile = await api.get("/users/me");
+    } catch (error) {
+      setAuthToken(null);
+      throw error;
+    }
+    localStorage.setItem(TOKEN_STORAGE_KEY, data.token);
     setToken(data.token);
-    setUser(data.user);
+    setUser(profile.user);
 
-    return data.user;
+    return profile.user;
   }, []);
 
   const logout = useCallback(() => {
@@ -118,9 +125,10 @@ export const AuthProvider = ({ children }) => {
 
   const updateUser = useCallback(async (payload) => {
     const data = await api.patch("/users/me", payload);
-    setUser((current) => ({ ...current, ...data }));
+    if (payload.password) logout();
+    else setUser((current) => ({ ...current, ...data }));
     return data;
-  }, []);
+  }, [logout]);
 
   const hasPermission = useCallback(
     (permission) =>

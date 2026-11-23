@@ -55,7 +55,6 @@ before(async () => {
 });
 
 after(async () => {
-  await prisma.user.delete({ where: { id: userId } });
   await cleanupTestUsers();
   await new Promise((resolve) => server.close(resolve));
 });
@@ -98,12 +97,16 @@ test("changing password with the right credentials works and new password logs i
     currentPassword: originalPassword,
   });
   assert.equal(status, 200);
+  assert.equal((await getJson(baseUrl, "/users/me", token)).status, 401);
 
   const oldLogin = await postJson(baseUrl, "/users/login", {
     email: currentEmail,
     password: originalPassword,
   });
   assert.equal(oldLogin.status, 401);
+  const newLogin = await postJson(baseUrl, "/users/login", { email: currentEmail, password: newPassword });
+  assert.equal(newLogin.status, 200);
+  token = newLogin.data.token;
 });
 
 test("GET /settings/institute returns institute settings", async () => {

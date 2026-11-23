@@ -1,12 +1,12 @@
 import {
   addChange, clearSnapshots, deleteChange, deleteSnapshot, listChanges,
-  readSnapshot, updateChange, writeSnapshot,
+  pruneSnapshots, readSnapshot, updateChange, writeSnapshot,
 } from "./offlineStore";
 import { canQueueChange, keepEntryDate, requiresRevision, revisionPaths } from "./offlineRoutes";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 const DEVICE_KEY = "jahan_fms_sync_device";
-const MAX_OFFLINE_SESSION_AGE = 7 * 24 * 60 * 60 * 1000;
+const DAY = 24 * 60 * 60 * 1000;
 
 let session = null;
 let onUnauthorized = null;
@@ -39,7 +39,7 @@ const updateStatus = async (current) => {
   channel?.postMessage("update");
 };
 
-const deviceId = () => {
+export const getOfflineDeviceId = () => {
   let id = localStorage.getItem(DEVICE_KEY);
   if (!id) {
     id = crypto.randomUUID();
@@ -47,6 +47,20 @@ const deviceId = () => {
   }
   return id;
 };
+
+const safeDeviceId = () => {
+  try { return getOfflineDeviceId(); } catch { return null; }
+};
+
+const offlineWindow = (policy) => {
+  if (policy?.allowed !== true || !Number.isInteger(policy.maxDays) || policy.maxDays < 1 || policy.maxDays > 7) return 0;
+  return policy.maxDays * DAY;
+};
+
+const offlineAllowed = (current) =>
+  offlineWindow(current?.offline) > 0 && Date.now() - current.offline.checkedAt <= offlineWindow(current.offline);
+
+export const hasOfflineAccess = () => offlineAllowed(session);
 
 export const setAuthToken = (token) => {
   if (session?.token === token) return;
@@ -78,6 +92,10 @@ export class OfflineError extends Error {}
 const networkRequest = async (path, { method = "GET", body, current, change, revision } = {}) => {
   const headers = { "Content-Type": "application/json" };
   if (current) headers.Authorization = `Bearer ${current.token}`;
+  if (path === "/users/me") {
+    const device = safeDeviceId();
+    if (device) headers["X-Offline-Device"] = device;
+  }
   if (change) {
     headers["X-Sync-Operation"] = change.id;
     headers["X-Sync-Device"] = change.deviceId;
@@ -117,27 +135,48 @@ const networkRequest = async (path, { method = "GET", body, current, change, rev
   return { data: data ?? null, revision: response.headers.get("X-Sync-Revision") };
 };
 
+const recordPolicy = async (current, owner, data) => {
+  const checkedAt = Date.now();
+  current.offline = { ...data.offline, checkedAt };
+  if (!owner) return;
+
+  if (!offlineAllowed(current)) {
+    await clearSnapshots(owner).catch(() => {});
+  } else {
+    const old = await readSnapshot(owner, "/users/me").catch(() => null);
+    const access = ({ role, permissions }) => JSON.stringify([role, [...(permissions ?? [])].sort()]);
+    if (old?.data?.user && access(data.user) !== access(old.data.user)) {
+      await clearSnapshots(owner).catch(() => {});
+    } else {
+      await pruneSnapshots(owner, checkedAt - offlineWindow(current.offline)).catch(() => {});
+    }
+    if (session === current) {
+      await writeSnapshot({ owner, path: "/users/me", data, checkedAt }).catch(() => {});
+    }
+  }
+
+  const device = safeDeviceId();
+  if (device && data.offline?.registered === false && !current.registrationAttempted && session === current) {
+    current.registrationAttempted = true;
+    void networkRequest("/settings/offline/devices", {
+      method: "POST", current,
+      body: { deviceId: device, label: (navigator.userAgentData?.platform || navigator.platform || "Browser").slice(0, 80) },
+    }).catch(() => {});
+  }
+};
+
 const read = async (path) => {
   const current = session;
   const owner = current?.owner;
-  const cacheable = owner && !path.startsWith("/students/admission-number-availability");
+  const cacheable = owner && !path.startsWith("/students/admission-number-availability") && !path.startsWith("/settings/offline");
   try {
     const { data, revision } = await networkRequest(path, { current });
-    if (session === current && cacheable) {
-      if (path === "/users/me") {
-        const old = await readSnapshot(owner, path).catch(() => null);
-        const access = ({ role, permissions }) => JSON.stringify([role, [...(permissions ?? [])].sort()]);
-        if (old?.data?.user && access(data.user) !== access(old.data.user)) {
-          await clearSnapshots(owner).catch(() => {});
-        }
-      }
-      if (session === current) {
-        await writeSnapshot({ owner, path, data, revision, checkedAt: Date.now() }).catch(() => {});
-      }
-    }
     if (session === current && current && path === "/users/me") {
+      await recordPolicy(current, owner, data);
       current.verified = true;
       void retrySync();
+    } else if (session === current && cacheable && offlineAllowed(current)) {
+      await writeSnapshot({ owner, path, data, revision, checkedAt: Date.now() }).catch(() => {});
     }
     return data;
   } catch (error) {
@@ -146,7 +185,12 @@ const read = async (path) => {
     }
     if (!(error instanceof OfflineError) || !cacheable || session !== current) throw error;
     const cached = await readSnapshot(owner, path).catch(() => null);
-    if (cached && (path !== "/users/me" || Date.now() - cached.checkedAt <= MAX_OFFLINE_SESSION_AGE)) {
+    if (path === "/users/me" && !current.verified && cached) {
+      current.offline = { ...cached.data.offline, checkedAt: cached.checkedAt };
+    }
+    if (!offlineAllowed(current)) {
+      await clearSnapshots(owner).catch(() => {});
+    } else if (cached && Date.now() - cached.checkedAt <= offlineWindow(current.offline)) {
       if (path === "/users/me") void refreshStatus(current);
       return cached.data;
     }
@@ -230,11 +274,11 @@ export const discardFailedChange = async (sequence) => {
 
 export const acknowledgeSync = () => publish({ uploaded: 0 });
 
-const findRevision = async (owner, method, path, sourcePath) => {
+const findRevision = async (current, method, path, sourcePath) => {
   if (!requiresRevision(method, path)) return;
   for (const candidate of sourcePath ? [sourcePath] : revisionPaths(path)) {
-    const cached = await readSnapshot(owner, candidate).catch(() => null);
-    if (cached?.revision != null) return cached.revision;
+    const cached = await readSnapshot(current.owner, candidate).catch(() => null);
+    if (cached?.revision != null && Date.now() - cached.checkedAt <= offlineWindow(current.offline)) return cached.revision;
   }
 };
 
@@ -245,7 +289,13 @@ const mutate = async (method, path, body, { sourcePath } = {}) => {
     return data;
   }
 
-  const revision = await findRevision(current.owner, method, path, sourcePath);
+  if (!offlineAllowed(current)) {
+    if (!navigator.onLine) throw new OfflineError("Offline access is unavailable for this device. Reconnect to continue.");
+    const { data } = await networkRequest(path, { method, body, current });
+    return data;
+  }
+
+  const revision = await findRevision(current, method, path, sourcePath);
   const deferred = !navigator.onLine || snapshot.offline;
   if (deferred && requiresRevision(method, path) && revision === undefined) {
     throw new OfflineError("Open the latest records online before saving this change offline.");
@@ -254,7 +304,7 @@ const mutate = async (method, path, body, { sourcePath } = {}) => {
   let sequence;
   try {
     sequence = await addChange({
-      owner: current.owner, id: crypto.randomUUID(), deviceId: deviceId(),
+      owner: current.owner, id: crypto.randomUUID(), deviceId: getOfflineDeviceId(),
       method, path, body: keepEntryDate(method, path, body), deferred, revision, createdAt: Date.now(),
     });
   } catch {
@@ -281,9 +331,17 @@ window.addEventListener("online", () => {
   }
 });
 window.setInterval(() => {
-  if (session?.owner && navigator.onLine && (snapshot.changes.some((change) => !change.error) || snapshot.offline)) {
-    if (snapshot.offline) void read("/users/me").catch(() => {});
-    void retrySync();
+  const current = session;
+  if (!current?.owner) return;
+  if (navigator.onLine) {
+    if (snapshot.offline || Date.now() - (current.offline?.checkedAt ?? 0) > 60000) {
+      void read("/users/me").catch(() => {
+        if (session === current && snapshot.offline && !offlineAllowed(current)) onUnauthorized?.();
+      });
+    }
+    if (snapshot.changes.some((change) => !change.error)) void retrySync();
+  } else if (!offlineAllowed(current)) {
+    onUnauthorized?.();
   }
 }, 15000);
 

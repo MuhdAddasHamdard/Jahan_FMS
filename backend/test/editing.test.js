@@ -97,7 +97,6 @@ after(async () => {
   await prisma.feeType.deleteMany({ where: { userId: { in: [adminId, financeId] } } });
   await prisma.student.deleteMany({ where: { userId: { in: [adminId, financeId] } } });
   await prisma.staff.deleteMany({ where: { userId: { in: [adminId, financeId] } } });
-  await prisma.user.deleteMany({ where: { id: { in: [adminId, financeId] } } });
   await cleanupTestUsers();
   await new Promise((resolve) => server.close(resolve));
 });

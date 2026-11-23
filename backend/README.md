@@ -44,6 +44,59 @@ needed to replay retries without duplicating committed writes, and the revisions
 used to detect stale offline edits. Keep this table with the other application
 tables when backing up or restoring the database.
 
+## Account and offline controls
+
+- Deactivate departing accounts from **Users**. Institute records keep their
+  original owner IDs, and the database prevents deleting an account that still
+  owns records. An administrator can reactivate the account when needed.
+- Password changes, administrator resets, and account deactivation revoke old
+  sessions. The rollout also requires everyone to sign in again once to obtain
+  a versioned session. A disconnected browser learns about revocation when it
+  reconnects or its locally authorized window expires.
+- In **Settings → Offline access**, administrators can approve individual
+  registered browsers, disable downloads, and set a retention window of one to
+  seven days. Existing installations start with all signed-in devices enabled.
+  Pending changes remain on the device so the same user can upload them after
+  signing in online. Use managed browser profiles for sensitive work.
+- Offline writes detect conflicts against the actual records changed and any
+  financial dependencies checked by the operation. Changes captured before the
+  upgrade retain the older, conservative module check.
+
+## Verify releases and restores
+
+GitHub Actions runs the backend integration suite against an isolated PostgreSQL
+database, checks frontend lint and build, verifies the running release, and
+restores a sample backup into a separate database. For local integration tests,
+use a migrated database with a separate `test` component in its name, such as
+`jahan_test`. Tests remove their own fixtures.
+
+Set `JAHAN_RELEASE_SHA` to the full Git commit SHA for both the frontend build
+and the API process. Apply database migrations before starting the new API.
+After deployment, check the actual frontend and API URLs:
+
+```text
+node scripts/verify-release.mjs FRONTEND_URL API_URL FULL_COMMIT_SHA
+```
+
+The API URL may include a proxy prefix such as `/api`. The check reads the
+frontend release manifest and confirms the API can read the migrated database.
+
+For a recovery drill, use an approved backup and restore it to a newly created,
+isolated database. Use a PostgreSQL client compatible with the source server
+and a preconfigured service name or credentials from the hosting provider:
+
+```text
+pg_dump --dbname=service=jahan_source --format=custom --file=jahan.dump
+pg_restore --dbname=service=jahan_restore_test --exit-on-error --no-owner --no-privileges jahan.dump
+```
+
+Compare key totals and record counts with the backup snapshot, start a staging
+API against the restored database, and record the backup age and time to restore.
+Keep backup files outside source control and restrict access to them.
+For a real recovery, rotate `JWT_SECRET` before reopening the restored API so
+sessions issued after the backup can't come back into use. Reconcile financial
+entries and pending offline work against the recovery point.
+
 ## Production checklist
 
 - Use paid hosting suitable for real student and financial data, with managed

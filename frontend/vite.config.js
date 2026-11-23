@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { env } from "node:process";
 
 const offlineShell = () => ({
   name: "jahan-fms-offline-shell",
@@ -21,6 +22,11 @@ const offlineShell = () => ({
         fileName: "service-worker.js",
         source: template.replace("/* build-time assets */ []", JSON.stringify(assets))
           .replace("__BUILD__", hash.digest("hex").slice(0, 16)),
+      });
+      this.emitFile({
+        type: "asset",
+        fileName: "version.json",
+        source: JSON.stringify({ revision: env.JAHAN_RELEASE_SHA || "development" }),
       });
     },
   },

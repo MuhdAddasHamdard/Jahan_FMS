@@ -68,7 +68,6 @@ before(async () => {
 });
 
 after(async () => {
-  await prisma.user.delete({ where: { id: userId } });
   await cleanupTestUsers();
   await new Promise((resolve) => server.close(resolve));
 });

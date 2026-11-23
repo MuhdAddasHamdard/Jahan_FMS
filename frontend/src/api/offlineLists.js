@@ -1,4 +1,4 @@
-import { api, getSyncStatus } from "./client";
+import { api, getSyncStatus, hasOfflineAccess } from "./client";
 import { PERMISSIONS } from "../auth/permissions";
 
 const groups = [
@@ -11,7 +11,7 @@ const groups = [
 ];
 
 export const downloadOfflineLists = (user) => {
-  if (getSyncStatus().offline) return;
+  if (getSyncStatus().offline || !hasOfflineAccess()) return;
   const paths = ["/settings/institute"];
   for (const [permission, roles, endpoints] of groups) {
     if (user.role === "ADMIN" || roles.includes(user.role) || user.permissions?.includes(permission)) {

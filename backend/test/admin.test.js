@@ -89,9 +89,6 @@ before(async () => {
 });
 
 after(async () => {
-  await prisma.user.deleteMany({
-    where: { id: { in: [adminId] } },
-  });
   await cleanupTestUsers();
   await new Promise((resolve) => server.close(resolve));
 });
@@ -200,7 +197,7 @@ test("PATCH /users/:id/permissions does not change administrator access", async 
   assert.match(data.message, /ADMIN role/);
 });
 
-test("DELETE /users/:id with ADMIN deletes the user", async () => {
+test("legacy DELETE /users/:id deactivates the account", async () => {
   const target = await createTestUser({
     name: "Doomed",
     email: uniqueEmail("doomed"),
@@ -210,8 +207,8 @@ test("DELETE /users/:id with ADMIN deletes the user", async () => {
   const { status } = await deleteJson(`/users/${target.data.id}`, adminToken);
   assert.equal(status, 204);
 
-  const gone = await prisma.user.findUnique({ where: { id: target.data.id } });
-  assert.equal(gone, null);
+  const account = await prisma.user.findUnique({ where: { id: target.data.id } });
+  assert.ok(account.deactivatedAt);
 });
 
 test("DELETE /users/:id cannot delete your own account", async () => {
@@ -226,7 +223,7 @@ test("GET /users lists all users for the ADMIN", async () => {
   assert.ok(data.every((user) => user.password === undefined));
 });
 
-test("DELETE /users/:id cascades to institute data", async () => {
+test("deactivation preserves institute records and invalidates old sessions", async () => {
   const target = await createTestUser({
     name: "Cascade",
     email: uniqueEmail("cascade"),
@@ -265,21 +262,59 @@ test("DELETE /users/:id cascades to institute data", async () => {
     { admissionNo: `ADM-${between(1000, 9999)}`, name: "Cascade Student", classId: cls.data.id },
     targetToken,
   );
-  await postJson(baseUrl, "/fees/types", { name: "Cascade Fee", amount: 1000 }, targetToken);
-  await postJson(
+  const feeType = await postJson(baseUrl, "/fees/types", { name: "Cascade Fee", amount: 1000 }, targetToken);
+  const plan = await postJson(baseUrl, "/fees/plans", { studentId: student.data.id, feeTypeId: feeType.data.id }, targetToken);
+  assert.equal(plan.status, 201);
+  const detail = await getJson(baseUrl, `/fees/plans/${plan.data.id}`, targetToken);
+  const receipt = await postJson(baseUrl, "/fees/payments", { installmentId: detail.data.installments[0].id, amount: 500 }, targetToken);
+  assert.equal(receipt.status, 201);
+  const expense = await postJson(
     baseUrl,
     "/expenses",
     { description: "Cascade expense", amount: 500 },
     targetToken,
   );
+  assert.equal(expense.status, 201);
+  const staff = await postJson(baseUrl, "/staff", { staffNo: "RETAIN-1", name: "Retained Staff" }, targetToken);
+  const payroll = await postJson(baseUrl, "/salaries/payments", { staffId: staff.data.id, periodMonth: "2026-11", amount: 300 }, targetToken);
+  assert.equal(payroll.status, 201);
 
-  const { status } = await deleteJson(`/users/${target.data.id}`, adminToken);
-  assert.equal(status, 204);
+  const id = target.data.id;
+  const disabled = await patchJson(`/users/${id}/status`, { active: false }, adminToken);
+  assert.equal(disabled.status, 200);
+  assert.ok(disabled.data.deactivatedAt);
+  assert.equal((await getJson(baseUrl, "/users/me", targetToken)).status, 401);
+  const credentials = { email: target.data.email, password: "password123" };
+  assert.equal((await postJson(baseUrl, "/users/login", credentials)).status, 401);
+  assert.equal((await prisma.receipt.findUnique({ where: { id: receipt.data.receipt.id } })).userId, id);
+  assert.equal((await prisma.expense.findUnique({ where: { id: expense.data.id } })).userId, id);
+  assert.equal((await prisma.salaryPayment.findUnique({ where: { id: payroll.data.id } })).userId, id);
+  await assert.rejects(prisma.user.delete({ where: { id } }), /foreign key/i);
 
-  const orphanStudents = await prisma.student.count({ where: { userId: target.data.id } });
-  assert.equal(orphanStudents, 0);
-  const orphanClasses = await prisma.class.count({ where: { userId: target.data.id } });
-  assert.equal(orphanClasses, 0);
-  const orphanExpenses = await prisma.expense.count({ where: { userId: target.data.id } });
-  assert.equal(orphanExpenses, 0);
+  const enabled = await patchJson(`/users/${id}/status`, { active: true }, adminToken);
+  assert.equal(enabled.status, 200);
+  assert.equal(enabled.data.deactivatedAt, null);
+  assert.equal((await getJson(baseUrl, "/users/me", targetToken)).status, 401);
+  assert.equal((await postJson(baseUrl, "/users/login", credentials)).status, 200);
+});
+
+test("administrator password resets revoke every previous session", async () => {
+  const credentials = { email: uniqueEmail("reset-session"), password: "Old-password-123!" };
+  const target = await createTestUser({ ...credentials, name: "Reset Session" });
+  const first = await postJson(baseUrl, "/users/login", credentials);
+  const second = await postJson(baseUrl, "/users/login", credentials);
+  assert.notEqual(first.data.token, second.data.token);
+  const password = "New-password-987!";
+  assert.equal((await patchJson(`/users/${target.data.id}`, { password }, adminToken)).status, 200);
+  for (const { data } of [first, second]) {
+    assert.equal((await getJson(baseUrl, "/users/me", data.token)).status, 401);
+  }
+  const next = await postJson(baseUrl, "/users/login", { email: credentials.email, password });
+  assert.equal(next.status, 200);
+  assert.equal((await getJson(baseUrl, "/users/me", next.data.token)).status, 200);
+});
+
+test("the last active administrator cannot give up the administrator role", async () => {
+  const result = await patchJson(`/users/${adminId}/role`, { role: "FINANCE" }, adminToken);
+  assert.equal(result.status, 409);
 });

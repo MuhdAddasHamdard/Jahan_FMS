@@ -41,7 +41,6 @@ before(async () => {
 });
 
 after(async () => {
-  await prisma.user.deleteMany({ where: { id: userId } });
   await cleanupTestUsers();
   await new Promise((resolve) => server.close(resolve));
 });

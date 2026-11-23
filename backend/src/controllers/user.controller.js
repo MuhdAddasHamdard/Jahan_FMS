@@ -6,12 +6,14 @@ import {
   loginUserService,
   updateUserRole,
   updateUserPermissions,
-  deleteUser,
+  setAccountActive,
   updateCurrentUserService,
   updateUserService,
   verifyCurrentPassword,
 } from "../services/user.service";
 import jwt from "jsonwebtoken";
+import { randomUUID } from "node:crypto";
+import { getOfflineAccess } from "../services/offline.service";
 
 import { DEFAULT_ROLE, ROLES } from "../constants/roles";
 import { Prisma } from "../../generated/prisma/client";
@@ -102,21 +104,24 @@ export const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = await loginUserService(email, password);
+    const account = await loginUserService(email, password);
 
-    if (!user) {
+    if (!account) {
       return res.status(401).json({
         message: "Invalid email or password",
       });
     }
+    const { user, sessionVersion } = account;
     const token = jwt.sign(
       {
         id: user.id,
         role: user.role,
+        sessionVersion,
       },
       process.env.JWT_SECRET,
       {
         expiresIn: "1h",
+        jwtid: randomUUID(),
       },
     );
     return res.status(200).json({
@@ -139,9 +144,8 @@ export const getCurrentUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "user not found" });
     }
-    return res.status(200).json({
-      user,
-    });
+    const offline = await getOfflineAccess(req.user.id, req.get("X-Offline-Device"));
+    return res.status(200).json({ user, offline });
   } catch (error) {
     console.error(error);
   }
@@ -163,10 +167,13 @@ export const updateCurrentUser = async (req, res) => {
   }
 
   try {
-    const user = await updateCurrentUserService(req.user.id, req.body);
+    const user = await updateCurrentUserService(req.user.id, req.body, req.user.sessionVersion);
 
     res.status(200).json(user);
   } catch (error) {
+    if (error?.code === "P2025") {
+      return res.status(401).json({ message: "Your session has ended. Sign in again." });
+    }
     console.error(error);
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -187,7 +194,7 @@ export const setUserRole = async (req, res) => {
   const { role } = req.body;
 
   try {
-    const user = await updateUserRole(req.params.id, role);
+    const user = await updateUserRole(req.user, req.params.id, role);
 
     if (!user) {
       return res.status(404).json({
@@ -195,6 +202,7 @@ export const setUserRole = async (req, res) => {
       });
     }
 
+    if (user.error) return sendAccountError(res, user.error);
     res.status(200).json(user);
   } catch (error) {
     console.error(error);
@@ -254,15 +262,21 @@ export const updateManagedUser = async (req, res) => {
   }
 };
 
-export const removeUser = async (req, res) => {
-  try {
-    if (Number(req.params.id) === req.user.id) {
-      return res.status(400).json({
-        message: "You cannot delete your own account",
-      });
-    }
+const sendAccountError = (res, error) => {
+  if (error === "ADMIN_SESSION_CHANGED") return res.status(401).json({ message: "Your administrator session has changed." });
+  if (error === "LAST_ADMIN") return res.status(409).json({ message: "The institute needs at least one active administrator." });
+  return res.status(400).json({ message: "You cannot deactivate your own account." });
+};
 
-    const result = await deleteUser(req.params.id);
+export const changeAccountStatus = async (req, res) => {
+  const legacyDelete = req.method === "DELETE";
+  const active = legacyDelete ? false : req.body?.active;
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0 || typeof active !== "boolean") {
+    return res.status(400).json({ message: "Enter a valid account and status." });
+  }
+  try {
+    const result = await setAccountActive(req.user, id, active);
 
     if (result === null) {
       return res.status(404).json({
@@ -270,7 +284,9 @@ export const removeUser = async (req, res) => {
       });
     }
 
-    res.status(204).send();
+    if (result.error) return sendAccountError(res, result.error);
+    if (legacyDelete) return res.status(204).send();
+    return res.status(200).json(result);
   } catch (error) {
     console.error(error);
     res.status(500).json({

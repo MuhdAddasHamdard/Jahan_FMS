@@ -38,16 +38,20 @@ export const writeSnapshot = (snapshot) =>
 export const deleteSnapshot = (owner, path) =>
   transact("reads", "readwrite", (store) => store.delete([owner, path]));
 
-export const clearSnapshots = (owner) =>
+const removeSnapshots = (owner, shouldRemove) =>
   transact("reads", "readwrite", (store) => {
-    const request = store.index("owner").openKeyCursor(owner);
+    const request = store.index("owner").openCursor(owner);
     request.onsuccess = () => {
       const cursor = request.result;
       if (!cursor) return;
-      store.delete(cursor.primaryKey);
+      if (shouldRemove(cursor.value)) cursor.delete();
       cursor.continue();
     };
   });
+
+export const clearSnapshots = (owner) => removeSnapshots(owner, () => true);
+export const pruneSnapshots = (owner, cutoff) =>
+  removeSnapshots(owner, ({ checkedAt }) => !checkedAt || checkedAt < cutoff);
 
 export const addChange = (change) =>
   transact("changes", "readwrite", (store) => store.add(change));

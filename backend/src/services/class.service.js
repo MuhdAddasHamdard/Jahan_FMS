@@ -89,7 +89,7 @@ const resolveTeacherId = async (teacherId) => {
   }
 
   const teacher = await prisma.user.findFirst({
-    where: { id: Number(teacherId), role: ROLES.TEACHER },
+    where: { id: Number(teacherId), role: ROLES.TEACHER, deactivatedAt: null },
     select: { id: true },
   });
 

@@ -2,7 +2,7 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import prisma from "../src/prisma";
-import { createTestUser, postJson, startServer, uniqueEmail } from "./helpers.js";
+import { cleanupTestUsers, createTestUser, postJson, startServer, uniqueEmail } from "./helpers.js";
 
 const device = randomUUID();
 let server, baseUrl, token, actorId;
@@ -20,10 +20,7 @@ before(async () => {
 
 after(async () => {
   if (server) await new Promise((resolve) => server.close(resolve));
-  if (actorId) {
-    await prisma.syncMutation.deleteMany({ where: { actorId } });
-    await prisma.user.delete({ where: { id: actorId } });
-  }
+  await cleanupTestUsers();
 });
 
 const request = (path, { method = "GET", body, key, revision, fromDevice = device } = {}) => {
@@ -65,4 +62,21 @@ test("a stale change is rejected after another device writes, while delete retri
   const remove = { method: "DELETE", key: randomUUID(), revision: current.headers.get("X-Sync-Revision") };
   assert.equal((await request(path, remove)).status, 204);
   assert.equal((await request(path, remove)).status, 204);
+});
+
+test("a write to another expense does not conflict with an offline edit", async () => {
+  const create = async (description) => (await request("/expenses", {
+    method: "POST", body: { description, amount: 50 },
+  })).json();
+  const first = await create("First expense");
+  const second = await create("Second expense");
+  const checkpoint = (await request("/expenses")).headers.get("X-Sync-Revision");
+  assert.equal((await request(`/expenses/${first.id}`, {
+    method: "PATCH", key: randomUUID(), fromDevice: randomUUID(), body: { description: "Edited first" },
+  })).status, 200);
+  const changed = await request(`/expenses/${second.id}`, {
+    method: "PATCH", key: randomUUID(), revision: checkpoint, body: { description: "Offline second" },
+  });
+  assert.equal(changed.status, 200);
+  assert.equal((await changed.json()).description, "Offline second");
 });

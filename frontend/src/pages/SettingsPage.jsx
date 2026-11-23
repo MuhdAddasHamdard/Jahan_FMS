@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import OfflineAccessSettings from "../components/OfflineAccessSettings";
 import { api } from "../api/client";
 import { showMutationFeedback } from "../api/mutationFeedback";
 import PageHeader from "../components/PageHeader";
@@ -206,7 +207,7 @@ const SettingsPage = () => {
         password: false,
         confirmPassword: false,
       });
-      toast.success("Password changed");
+      toast.success("Password changed. Sign in with your new password.");
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -470,6 +471,7 @@ const SettingsPage = () => {
 
       {isAdmin && (
         <>
+          <OfflineAccessSettings />
           {loading && institute === null ? (
             <div className="mt-6 flex h-40 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
               <Spinner />
