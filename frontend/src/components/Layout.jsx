@@ -10,27 +10,37 @@ const NAV_SECTIONS = [
   {
     title: "Overview",
     roles: ["ADMIN", "FINANCE", "TEACHER", "STUDENT"],
+    items: [{ to: "/", label: "Dashboard", icon: "dashboard" }],
+  },
+  {
+    title: "People",
     items: [
-      { to: "/", label: "Dashboard", icon: "dashboard" },
       {
-        to: "/reports/institute",
-        label: "Institute Report",
-        icon: "office",
+        to: "/classes",
+        label: "Classes",
+        icon: "book",
+        roles: ["ADMIN", "FINANCE", "TEACHER"],
+        permission: PERMISSIONS.CLASSES,
+      },
+      {
+        to: "/students",
+        label: "Students",
+        icon: "student",
+        roles: ["ADMIN", "FINANCE", "TEACHER"],
+        permission: PERMISSIONS.STUDENTS,
+      },
+      {
+        to: "/staff",
+        label: "Staff",
+        icon: "userGroup",
         roles: ["ADMIN", "FINANCE"],
-        permission: PERMISSIONS.REPORTS,
+        permission: PERMISSIONS.STAFF,
       },
     ],
   },
   {
     title: "Finance",
     items: [
-      {
-        to: "/reports",
-        label: "Reports",
-        icon: "chart",
-        roles: ["ADMIN", "FINANCE"],
-        permission: PERMISSIONS.REPORTS,
-      },
       {
         to: "/fee-types",
         label: "Fee Types",
@@ -60,13 +70,6 @@ const NAV_SECTIONS = [
         permission: PERMISSIONS.FINANCE,
       },
       {
-        to: "/staff",
-        label: "Staff",
-        icon: "userGroup",
-        roles: ["ADMIN", "FINANCE"],
-        permission: PERMISSIONS.STAFF,
-      },
-      {
         to: "/salaries",
         label: "Salaries",
         icon: "banknotes",
@@ -83,21 +86,21 @@ const NAV_SECTIONS = [
     ],
   },
   {
-    title: "Institute",
+    title: "Reports",
     items: [
       {
-        to: "/classes",
-        label: "Classes",
-        icon: "book",
-        roles: ["ADMIN", "FINANCE", "TEACHER"],
-        permission: PERMISSIONS.CLASSES,
+        to: "/reports",
+        label: "Reports",
+        icon: "chart",
+        roles: ["ADMIN", "FINANCE"],
+        permission: PERMISSIONS.REPORTS,
       },
       {
-        to: "/students",
-        label: "Students",
-        icon: "student",
-        roles: ["ADMIN", "FINANCE", "TEACHER"],
-        permission: PERMISSIONS.STUDENTS,
+        to: "/reports/institute",
+        label: "Institute Report",
+        icon: "office",
+        roles: ["ADMIN", "FINANCE"],
+        permission: PERMISSIONS.REPORTS,
       },
     ],
   },

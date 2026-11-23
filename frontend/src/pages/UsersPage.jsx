@@ -12,13 +12,18 @@ import { formatDate } from "../utils/format";
 import { passwordLengthError } from "../utils/password";
 import { PERMISSION_OPTIONS } from "../auth/permissions";
 
-const ROLES = ["ADMIN", "FINANCE", "TEACHER", "STUDENT"];
+const ROLES = [
+  { value: "ADMIN", label: "Administrator" },
+  { value: "FINANCE", label: "Finance" },
+  { value: "TEACHER", label: "Teacher" },
+  { value: "STUDENT", label: "Student" },
+];
 
 const ROLE_BADGE = {
-  ADMIN: "bg-violet-50 text-violet-700",
-  FINANCE: "bg-teal-50 text-teal-700",
-  TEACHER: "bg-sky-50 text-sky-700",
-  STUDENT: "bg-amber-50 text-amber-700",
+  ADMIN: { label: "Administrator", className: "bg-violet-50 text-violet-700" },
+  FINANCE: { label: "Finance", className: "bg-teal-50 text-teal-700" },
+  TEACHER: { label: "Teacher", className: "bg-sky-50 text-sky-700" },
+  STUDENT: { label: "Student", className: "bg-amber-50 text-amber-700" },
 };
 
 const UsersPage = () => {
@@ -118,7 +123,7 @@ const UsersPage = () => {
         current.map((user) => (user.id === updated.id ? { ...user, ...updated } : user)),
       );
       setAccessUser(null);
-      toast.success("User authorities updated");
+      toast.success("Access updated");
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -252,10 +257,10 @@ const UsersPage = () => {
       render: (user) => (
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-            ROLE_BADGE[user.role] || "bg-slate-100 text-slate-600"
+            ROLE_BADGE[user.role]?.className || "bg-slate-100 text-slate-600"
           }`}
         >
-          {user.role}
+          {ROLE_BADGE[user.role]?.label || user.role}
         </span>
       ),
     },
@@ -273,8 +278,8 @@ const UsersPage = () => {
             className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-teal-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {ROLES.map((role) => (
-              <option key={role} value={role}>
-                {role}
+              <option key={role.value} value={role.value}>
+                {role.label}
               </option>
             ))}
           </select>
@@ -283,7 +288,7 @@ const UsersPage = () => {
     },
     {
       key: "permissions",
-      header: "Authorities",
+      header: "Extra access",
       render: (user) =>
         user.role === "ADMIN" ? (
           <span className="text-xs font-medium text-violet-700">All access</span>
@@ -315,8 +320,8 @@ const UsersPage = () => {
   return (
     <div>
       <PageHeader
-        title="User management"
-        description="Manage system users, their details and roles. Administrator only."
+        title="Users"
+        description="Create accounts, choose a role, and grant extra access only when needed."
       />
 
       {error && (
@@ -332,14 +337,18 @@ const UsersPage = () => {
         rows={users}
         columns={columns}
         searchPlaceholder="Search users..."
-        searchValue={(user) => [user.name, user.email, user.role].filter(Boolean).join(" ")}
+        searchValue={(user) =>
+          [user.name, user.email, ROLE_BADGE[user.role]?.label || user.role]
+            .filter(Boolean)
+            .join(" ")
+        }
         filters={[
           {
             key: "role",
             label: "Filter by role",
             options: [
               { value: "", label: "All roles" },
-              ...ROLES.map((role) => ({ value: role, label: role })),
+              ...ROLES.map((role) => ({ value: role.value, label: role.label })),
             ],
             value: (user) => user.role,
           },
@@ -436,10 +445,10 @@ const UsersPage = () => {
       <Modal
         open={Boolean(accessUser)}
         onClose={() => setAccessUser(null)}
-        title="Manage authorities"
+        title="Manage access"
         description={
           accessUser
-            ? `Grant additional module access to ${accessUser.name}. Their role-based access remains unchanged.`
+            ? `Choose any extra areas ${accessUser.name} can access. Their role access stays the same.`
             : undefined
         }
         footer={
@@ -457,7 +466,7 @@ const UsersPage = () => {
               disabled={permissionsBusy}
               className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
             >
-              {permissionsBusy ? "Saving..." : "Save authorities"}
+              {permissionsBusy ? "Saving..." : "Save access"}
             </button>
           </>
         }
@@ -468,7 +477,7 @@ const UsersPage = () => {
           className="space-y-3"
         >
           <p className="text-xs text-slate-500">
-            These grants add to the access already provided by the user&apos;s role.
+            Their role already provides the standard access. Add other areas here if needed.
             User and institute settings remain administrator-only.
           </p>
           {PERMISSION_OPTIONS.map((permission) => (
@@ -579,8 +588,8 @@ const UsersPage = () => {
               className={inputClass}
             >
               {ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {role}
+                <option key={role.value} value={role.value}>
+                  {role.label}
                 </option>
               ))}
             </select>

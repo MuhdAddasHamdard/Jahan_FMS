@@ -226,16 +226,33 @@ const Dashboard = () => {
       />
 
       {isAdmin && (
-        <div className="card mb-5 flex flex-wrap items-center justify-between gap-4 p-4">
-          <div>
-            <p className="text-sm font-semibold text-content">User access</p>
+        <div className="card mb-5 p-4 sm:p-5">
+          <div className="mb-4">
+            <p className="text-sm font-semibold text-content">Get started</p>
             <p className="mt-1 text-xs text-muted">
-              Assign additional module authorities to users.
+              Set up the essentials for your institute. You can come back to these anytime.
             </p>
           </div>
-          <Link to="/users" className="btn btn-primary">
-            Manage users & authorities
-          </Link>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            {[
+              { to: "/settings", label: "Institute details", icon: "office" },
+              { to: "/users", label: "Add users", icon: "users" },
+              { to: "/classes", label: "Create classes", icon: "book" },
+              { to: "/students", label: "Add students", icon: "student" },
+              { to: "/fee-plans", label: "Set up fees", icon: "wallet" },
+            ].map((item, index) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className="flex items-center gap-3 rounded-lg border border-line bg-surface-2 px-3 py-3 text-sm font-medium text-content transition hover:border-brand-300 hover:bg-surface"
+              >
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
+                  {index + 1}
+                </span>
+                <span>{item.label}</span>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 
