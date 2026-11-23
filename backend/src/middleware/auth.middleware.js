@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import prisma from "../prisma";
+import { syncReadRevision } from "./sync.middleware";
 
 export const authenticateUser = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -34,6 +35,7 @@ export const authenticateUser = async (req, res, next) => {
     }
 
     req.user = user;
+    await syncReadRevision(req, res);
     return next();
   } catch (error) {
     console.error(error);

@@ -29,7 +29,8 @@ app.use(
       callback(null, !origin || allowedOrigins.has(origin));
     },
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Sync-Operation", "X-Sync-Device", "X-Sync-Revision"],
+    exposedHeaders: ["X-Sync-Revision"],
     maxAge: 600,
   }),
 );

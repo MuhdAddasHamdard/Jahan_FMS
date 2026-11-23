@@ -6,7 +6,7 @@ export const auditSensitiveChange = (req, res, next) => {
   }
 
   res.once("finish", () => {
-    if (res.statusCode < 200 || res.statusCode >= 300 || !req.user?.id) {
+    if (res.statusCode < 200 || res.statusCode >= 300 || !req.user?.id || res.locals.syncReplay) {
       return;
     }
 

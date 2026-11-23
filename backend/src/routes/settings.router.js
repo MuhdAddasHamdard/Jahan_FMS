@@ -1,3 +1,4 @@
+import { syncMutation } from "../middleware/sync.middleware";
 import express from "express";
 import { authenticateUser } from "../middleware/auth.middleware";
 import { authorizeRole } from "../middleware/role.middleware";
@@ -17,7 +18,7 @@ router.patch(
   "/institute",
   authorizeRole(ROLES.ADMIN),
   validateInstituteSettings,
-  updateInstituteSettingsController,
+  syncMutation(updateInstituteSettingsController),
 );
 
 export default router;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { showMutationFeedback } from "../api/mutationFeedback";
 import PageHeader from "../components/PageHeader";
 import Spinner from "../components/Spinner";
 import Alert from "../components/Alert";
@@ -261,9 +262,10 @@ const PlanDetailPanel = ({ plan, onChanged }) => {
 
   const handleCollect = async (payload) => {
     try {
-      await api.post("/fees/payments", payload);
-      toast.success(`Payment collected for ${plan.student.name}`);
+      const result = await api.post("/fees/payments", payload, { sourcePath: `/fees/plans/${plan.id}` });
+      const synced = showMutationFeedback(toast, result, `Payment collected for ${plan.student.name}`);
       setCollectingId(null);
+      if (!synced) return;
       await refresh();
       onChanged?.();
     } catch (err) {
@@ -452,7 +454,7 @@ const FeePlansPage = () => {
     setSubmitting(true);
     setError("");
     try {
-      await api.post("/fees/plans", {
+      const result = await api.post("/fees/plans", {
         studentId: Number(draft.studentId),
         feeTypeId: Number(draft.feeTypeId),
         totalAmount: Number(draft.totalAmount),
@@ -462,7 +464,8 @@ const FeePlansPage = () => {
       });
       setCreating(false);
       setDraft(emptyPlan);
-      toast.success("Fee plan created");
+      const synced = showMutationFeedback(toast, result, "Fee plan created");
+      if (!synced) return;
       await refreshPlans();
     } catch (err) {
       toast.error(err.message);
@@ -498,7 +501,7 @@ const FeePlansPage = () => {
 
     setSubmitting(true);
     try {
-      await api.patch(`/fees/plans/${editing.id}`, {
+      const result = await api.patch(`/fees/plans/${editing.id}`, {
         feeTypeId: Number(editValue.feeTypeId),
         totalAmount: Number(editValue.totalAmount),
         installmentCount: Math.max(1, Number(editValue.installmentCount) || 1),
@@ -506,7 +509,8 @@ const FeePlansPage = () => {
         discountValue: Number(editValue.discountValue) || 0,
       });
       setEditing(null);
-      toast.success("Fee plan updated");
+      const synced = showMutationFeedback(toast, result, "Fee plan updated");
+      if (!synced) return;
       await refreshPlans();
     } catch (err) {
       toast.error(err.message);
@@ -518,9 +522,10 @@ const FeePlansPage = () => {
   const handleDelete = async () => {
     setDeleteBusy(true);
     try {
-      await api.delete(`/fees/plans/${deleting.id}`);
-      toast.success("Fee plan deleted");
+      const result = await api.delete(`/fees/plans/${deleting.id}`);
+      const synced = showMutationFeedback(toast, result, "Fee plan deleted");
       setDeleting(null);
+      if (!synced) return;
       await refreshPlans();
     } catch (err) {
       toast.error(err.message);

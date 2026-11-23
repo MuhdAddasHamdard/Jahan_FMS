@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { showMutationFeedback } from "../api/mutationFeedback";
 import PageHeader from "../components/PageHeader";
 import Alert from "../components/Alert";
 import Modal from "../components/Modal";
@@ -136,14 +137,15 @@ const FeeTypesPage = () => {
     setSubmitting(true);
     setError("");
     try {
-      await api.post("/fees/types", {
+      const result = await api.post("/fees/types", {
         name: draft.name.trim(),
         amount: Number(draft.amount),
         period: draft.period,
       });
       setCreating(false);
       setDraft(emptyFeeType);
-      toast.success("Fee type added");
+      const synced = showMutationFeedback(toast, result, "Fee type added");
+      if (!synced) return;
       await refresh();
     } catch (err) {
       toast.error(err.message);
@@ -171,13 +173,14 @@ const FeeTypesPage = () => {
 
     setSubmitting(true);
     try {
-      await api.patch(`/fees/types/${editing.id}`, {
+      const result = await api.patch(`/fees/types/${editing.id}`, {
         name: editValue.name.trim(),
         amount: Number(editValue.amount),
         period: editValue.period,
       });
       setEditing(null);
-      toast.success("Fee type updated");
+      const synced = showMutationFeedback(toast, result, "Fee type updated");
+      if (!synced) return;
       await refresh();
     } catch (err) {
       toast.error(err.message);
@@ -189,9 +192,10 @@ const FeeTypesPage = () => {
   const handleDelete = async () => {
     setDeleteBusy(true);
     try {
-      await api.delete(`/fees/types/${deleting.id}`);
-      toast.success(`"${deleting.name}" deleted`);
+      const result = await api.delete(`/fees/types/${deleting.id}`);
+      const synced = showMutationFeedback(toast, result, `"${deleting.name}" deleted`);
       setDeleting(null);
+      if (!synced) return;
       await refresh();
     } catch (err) {
       toast.error(err.message);

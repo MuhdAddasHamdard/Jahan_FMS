@@ -253,6 +253,21 @@ model ClassSchedule {
   @@index([userId])
 }
 
+model SyncMutation {
+  revision    BigInt   @id @default(autoincrement())
+  actorId     Int
+  operationId String   @db.Uuid
+  deviceId    String?  @db.Uuid
+  scope       String
+  fingerprint String
+  status      Int
+  response    Json?
+  createdAt   DateTime @default(now())
+
+  @@unique([actorId, operationId])
+  @@index([scope, revision])
+}
+
 model CourseMaterial {
   id          Int      @id @default(autoincrement())
   classId     Int

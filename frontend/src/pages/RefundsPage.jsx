@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
+import { showMutationFeedback } from "../api/mutationFeedback";
 import PageHeader from "../components/PageHeader";
 import Alert from "../components/Alert";
 import Modal from "../components/Modal";
@@ -213,7 +214,7 @@ const RefundsPage = () => {
     setSubmitting(true);
     setError("");
     try {
-      await api.post("/refunds", {
+      const result = await api.post("/refunds", {
         studentId: Number(draft.studentId),
         receiptId: draft.receiptId ? Number(draft.receiptId) : null,
         amount: Number(draft.amount),
@@ -222,7 +223,8 @@ const RefundsPage = () => {
       });
       setCreating(false);
       setDraft(emptyRefund);
-      toast.success("Refund issued");
+      const synced = showMutationFeedback(toast, result, "Refund issued");
+      if (!synced) return;
       await refresh();
     } catch (err) {
       toast.error(err.message);
@@ -251,14 +253,15 @@ const RefundsPage = () => {
 
     setSubmitting(true);
     try {
-      await api.patch(`/refunds/${editing.id}`, {
+      const result = await api.patch(`/refunds/${editing.id}`, {
         receiptId: editValue.receiptId ? Number(editValue.receiptId) : null,
         amount: Number(editValue.amount),
         reason: editValue.reason.trim() || null,
         refundedOn: editValue.refundedOn || undefined,
       });
       setEditing(null);
-      toast.success("Refund updated");
+      const synced = showMutationFeedback(toast, result, "Refund updated");
+      if (!synced) return;
       await refresh();
     } catch (err) {
       toast.error(err.message);
@@ -270,9 +273,10 @@ const RefundsPage = () => {
   const handleDelete = async () => {
     setDeleteBusy(true);
     try {
-      await api.delete(`/refunds/${deleting.id}`);
-      toast.success("Refund deleted");
+      const result = await api.delete(`/refunds/${deleting.id}`);
+      const synced = showMutationFeedback(toast, result, "Refund deleted");
       setDeleting(null);
+      if (!synced) return;
       await refresh();
     } catch (err) {
       toast.error(err.message);

@@ -1,3 +1,4 @@
+import { syncMutation } from "../middleware/sync.middleware";
 import express from "express";
 import { authenticateUser } from "../middleware/auth.middleware";
 import { authorizeRoleOrPermission } from "../middleware/role.middleware";
@@ -33,11 +34,11 @@ const staffOnly = authorizeRoleOrPermission(
 
 router.get("/", staffOnly, getStudents);
 router.get("/admission-number-availability", staffOnly, checkAdmissionNumber);
-router.post("/", staffOnly, validateStudent, createStudentController);
+router.post("/", staffOnly, validateStudent, syncMutation(createStudentController));
 router.get("/me", getMyPortalController);
 router.get("/:id", staffOnly, getStudent);
-router.patch("/:id", staffOnly, validateStudentUpdate, updateStudentController);
-router.delete("/:id", staffOnly, deleteStudentController);
+router.patch("/:id", staffOnly, validateStudentUpdate, syncMutation(updateStudentController));
+router.delete("/:id", staffOnly, syncMutation(deleteStudentController));
 router.post("/:id/account", staffOnly, validateStudentAccount, linkStudentAccountController);
 router.delete("/:id/account", staffOnly, unlinkStudentAccountController);
 

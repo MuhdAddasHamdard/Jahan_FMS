@@ -1,3 +1,4 @@
+import { syncMutation } from "../middleware/sync.middleware";
 import express from "express";
 import { authenticateUser } from "../middleware/auth.middleware";
 import { authorizeRoleOrPermission } from "../middleware/role.middleware";
@@ -23,9 +24,9 @@ router.use(
 );
 
 router.get("/", getExpensesController);
-router.post("/", validateExpense, createExpenseController);
+router.post("/", validateExpense, syncMutation(createExpenseController));
 router.get("/:id", getExpenseController);
-router.patch("/:id", validateExpenseUpdate, updateExpenseController);
-router.delete("/:id", deleteExpenseController);
+router.patch("/:id", validateExpenseUpdate, syncMutation(updateExpenseController));
+router.delete("/:id", syncMutation(deleteExpenseController));
 
 export default router;

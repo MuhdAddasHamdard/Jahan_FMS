@@ -26,7 +26,8 @@ configure protected log retention with the hosting provider.
 
 ## Database migration
 
-After setting `DATABASE_URL`, apply the additive fee-discount migration with:
+After setting `DATABASE_URL`, apply the migrations and regenerate the Prisma
+client before starting the updated API:
 
 ```powershell
 npx prisma migrate deploy
@@ -37,6 +38,11 @@ Existing fee plans keep a `NONE` discount by default. A fee-plan discount can
 be a percentage or fixed amount and is applied once to the whole plan before
 installments are generated. Plan discounts cannot be changed after payments
 have been recorded.
+
+The offline sync migration adds `SyncMutation`. It stores the operation results
+needed to replay retries without duplicating committed writes, and the revisions
+used to detect stale offline edits. Keep this table with the other application
+tables when backing up or restoring the database.
 
 ## Production checklist
 

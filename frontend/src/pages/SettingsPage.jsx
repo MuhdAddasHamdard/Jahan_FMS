@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
+import { showMutationFeedback } from "../api/mutationFeedback";
 import PageHeader from "../components/PageHeader";
 import Spinner from "../components/Spinner";
 import Alert from "../components/Alert";
@@ -227,6 +228,7 @@ const SettingsPage = () => {
         phone: instituteDraft.phone.trim() || "",
         address: instituteDraft.address.trim() || "",
       });
+      if (!showMutationFeedback(toast, data, "Institute profile updated")) return;
       setInstitute(data);
       setInstituteDraft({
         name: data.name ?? "",
@@ -235,7 +237,6 @@ const SettingsPage = () => {
         phone: data.phone ?? "",
         address: data.address ?? "",
       });
-      toast.success("Institute profile updated");
     } catch (err) {
       toast.error(err.message);
     } finally {

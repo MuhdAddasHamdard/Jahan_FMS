@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
+import { showMutationFeedback } from "../api/mutationFeedback";
 import Alert from "../components/Alert";
 import ConfirmDialog from "../components/ConfirmDialog";
 import DataTable from "../components/DataTable";
@@ -112,22 +113,23 @@ const SalariesPage = () => {
     setBusy(true);
     setFormError("");
     try {
+      let synced;
       if (rateEditor.mode === "create") {
-        await api.post("/salaries/rates", {
+        const rate = await api.post("/salaries/rates", {
           staffId: Number(rateForm.staffId),
           amount: Number(rateForm.amount),
           effectiveFrom: rateForm.effectiveFrom,
         });
-        toast.success("Salary rate added");
+        synced = showMutationFeedback(toast, rate, "Salary rate added");
       } else {
-        await api.patch(`/salaries/rates/${rateEditor.rate.id}`, {
+        const rate = await api.patch(`/salaries/rates/${rateEditor.rate.id}`, {
           amount: Number(rateForm.amount),
           effectiveFrom: rateForm.effectiveFrom,
         });
-        toast.success("Salary rate updated");
+        synced = showMutationFeedback(toast, rate, "Salary rate updated");
       }
       setRateEditor(null);
-      await refresh();
+      if (synced) await refresh();
     } catch (err) {
       setFormError(err.message);
     } finally {
@@ -182,7 +184,11 @@ const SalariesPage = () => {
           ...payload,
           staffId: Number(paymentForm.staffId),
         });
-        toast.success(`Salary payment recorded for ${paymentForm.periodMonth}`);
+        if (!showMutationFeedback(toast, payment, `Salary payment recorded for ${paymentForm.periodMonth}`)) {
+          printWindow?.close();
+          setPaymentEditor(null);
+          return;
+        }
         let printed = false;
         let printFailed = false;
         try {
@@ -196,8 +202,11 @@ const SalariesPage = () => {
           toast.error("Payment saved. Allow pop-ups and use Print voucher in the salary list.");
         }
       } else {
-        await api.patch(`/salaries/payments/${paymentEditor.payment.id}`, payload);
-        toast.success("Salary payment updated");
+        const payment = await api.patch(`/salaries/payments/${paymentEditor.payment.id}`, payload);
+        if (!showMutationFeedback(toast, payment, "Salary payment updated")) {
+          setPaymentEditor(null);
+          return;
+        }
       }
       setPaymentEditor(null);
       await refresh();
@@ -213,15 +222,12 @@ const SalariesPage = () => {
     if (!deleting) return;
     setBusy(true);
     try {
-      if (deleting.type === "rate") {
-        await api.delete(`/salaries/rates/${deleting.item.id}`);
-        toast.success("Salary rate deleted");
-      } else {
-        await api.delete(`/salaries/payments/${deleting.item.id}`);
-        toast.success("Salary payment deleted");
-      }
+      const isRate = deleting.type === "rate";
+      const result = await api.delete(`/salaries/${isRate ? "rates" : "payments"}/${deleting.item.id}`);
       setDeleting(null);
-      await refresh();
+      if (showMutationFeedback(toast, result, isRate ? "Salary rate deleted" : "Salary payment deleted")) {
+        await refresh();
+      }
     } catch (err) {
       setError(err.message);
       setDeleting(null);

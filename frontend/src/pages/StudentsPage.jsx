@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { api } from "../api/client";
+import { api, OfflineError } from "../api/client";
+import { showMutationFeedback } from "../api/mutationFeedback";
 import { useAuth } from "../auth/auth-context";
 import PageHeader from "../components/PageHeader";
 import Spinner from "../components/Spinner";
@@ -701,11 +702,13 @@ const StudentsPage = () => {
             checking: false,
           });
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setAdmissionCheck({
             admissionNo,
-            error: "Could not check this student ID. Please try again.",
+            error: error instanceof OfflineError
+              ? "This student ID will be checked when the record syncs."
+              : "Could not check this student ID. Please try again.",
             checking: false,
           });
         }
@@ -757,10 +760,11 @@ const StudentsPage = () => {
         payload.installmentCount = Math.max(1, Number(draft.installmentCount) || 1);
       }
 
-      await api.post("/students", payload);
+      const result = await api.post("/students", payload);
       setCreating(false);
       setDraft(emptyStudent);
-      toast.success("Student created");
+      const synced = showMutationFeedback(toast, result, "Student created");
+      if (!synced) return;
       await fetchStudents();
     } catch (err) {
       toast.error(err.message);
@@ -771,7 +775,10 @@ const StudentsPage = () => {
 
   const openEdit = async (student) => {
     try {
-      const detail = await api.get(`/students/${student.id}`);
+      const detail = await api.get(`/students/${student.id}`).catch((error) => {
+        if (error instanceof OfflineError) return student;
+        throw error;
+      });
       setEditing(detail);
       setEditValue({
         admissionNo: detail.admissionNo,
@@ -799,7 +806,7 @@ const StudentsPage = () => {
 
     setSubmitting(true);
     try {
-      await api.patch(`/students/${editing.id}`, {
+      const result = await api.patch(`/students/${editing.id}`, {
         name: editValue.name.trim(),
         guardianName: editValue.guardianName.trim() || null,
         phone: editValue.phone.trim() || null,
@@ -808,7 +815,8 @@ const StudentsPage = () => {
         status: editValue.status,
       });
       setEditing(null);
-      toast.success("Student updated");
+      const synced = showMutationFeedback(toast, result, "Student updated");
+      if (!synced) return;
       await fetchStudents();
     } catch (err) {
       toast.error(err.message);
@@ -821,9 +829,10 @@ const StudentsPage = () => {
     if (!deleting) return;
     setConfirmBusy(true);
     try {
-      await api.delete(`/students/${deleting.id}`);
+      const result = await api.delete(`/students/${deleting.id}`);
       setDeleting(null);
-      toast.success("Student deleted");
+      const synced = showMutationFeedback(toast, result, "Student deleted");
+      if (!synced) return;
       await fetchStudents();
     } catch (err) {
       toast.error(err.message);

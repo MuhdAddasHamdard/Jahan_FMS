@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import SyncStatus from "./SyncStatus";
 import { useAuth } from "../auth/auth-context";
 import { PERMISSIONS } from "../auth/permissions";
 import { useTheme } from "../theme/theme-context";
@@ -568,6 +569,7 @@ const Layout = () => {
             key={`${location.pathname}-${theme}`}
             className="animate-fade-in mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
           >
+            <SyncStatus />
             <Outlet />
           </main>
         </div>

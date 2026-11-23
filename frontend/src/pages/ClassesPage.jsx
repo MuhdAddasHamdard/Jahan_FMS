@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { showMutationFeedback } from "../api/mutationFeedback";
 import { useAuth } from "../auth/auth-context";
 import PageHeader from "../components/PageHeader";
 import Spinner from "../components/Spinner";
@@ -300,8 +301,9 @@ const ClassDetailPanel = ({ classRecord }) => {
 
   const addSchedule = async (classId, payload) => {
     try {
-      await api.post(`/classes/${classId}/schedules`, payload);
-      toast.success("Schedule added");
+      const result = await api.post(`/classes/${classId}/schedules`, payload);
+      const synced = showMutationFeedback(toast, result, "Schedule added");
+      if (!synced) return;
       await refresh();
     } catch (err) {
       toast.error(err.message);
@@ -311,8 +313,9 @@ const ClassDetailPanel = ({ classRecord }) => {
 
   const addMaterial = async (classId, payload) => {
     try {
-      await api.post(`/classes/${classId}/materials`, payload);
-      toast.success("Material added");
+      const result = await api.post(`/classes/${classId}/materials`, payload);
+      const synced = showMutationFeedback(toast, result, "Material added");
+      if (!synced) return;
       await refresh();
     } catch (err) {
       toast.error(err.message);
@@ -339,14 +342,15 @@ const ClassDetailPanel = ({ classRecord }) => {
 
     setBusy(true);
     try {
-      await api.patch(`/classes/${detail.id}/schedules/${editingSchedule.id}`, {
+      const result = await api.patch(`/classes/${detail.id}/schedules/${editingSchedule.id}`, {
         dayOfWeek: Number(scheduleValue.dayOfWeek),
         startTime: scheduleValue.startTime,
         endTime: scheduleValue.endTime,
         room: scheduleValue.room.trim() || null,
       });
       setEditingSchedule(null);
-      toast.success("Schedule updated");
+      const synced = showMutationFeedback(toast, result, "Schedule updated");
+      if (!synced) return;
       await refresh();
     } catch (err) {
       toast.error(err.message);
@@ -373,13 +377,14 @@ const ClassDetailPanel = ({ classRecord }) => {
 
     setBusy(true);
     try {
-      await api.patch(`/classes/${detail.id}/materials/${editingMaterial.id}`, {
+      const result = await api.patch(`/classes/${detail.id}/materials/${editingMaterial.id}`, {
         title: materialValue.title.trim(),
         description: materialValue.description.trim() || null,
         link: materialValue.link.trim() || null,
       });
       setEditingMaterial(null);
-      toast.success("Material updated");
+      const synced = showMutationFeedback(toast, result, "Material updated");
+      if (!synced) return;
       await refresh();
     } catch (err) {
       toast.error(err.message);
@@ -392,13 +397,11 @@ const ClassDetailPanel = ({ classRecord }) => {
     if (!deleting) return;
     setBusy(true);
     try {
-      if (deleting.type === "schedule") {
-        await api.delete(`/classes/${detail.id}/schedules/${deleting.record.id}`);
-      } else {
-        await api.delete(`/classes/${detail.id}/materials/${deleting.record.id}`);
-      }
-      toast.success("Deleted");
+      const collection = deleting.type === "schedule" ? "schedules" : "materials";
+      const result = await api.delete(`/classes/${detail.id}/${collection}/${deleting.record.id}`);
+      const synced = showMutationFeedback(toast, result, "Deleted");
       setDeleting(null);
+      if (!synced) return;
       await refresh();
     } catch (err) {
       toast.error(err.message);
@@ -690,10 +693,11 @@ const ClassesPage = () => {
       if (canAssignTeacher) {
         payload.teacherId = draft.teacherId ? Number(draft.teacherId) : null;
       }
-      await api.post("/classes", payload);
+      const result = await api.post("/classes", payload);
       setCreating(false);
       setDraft(emptyClass);
-      toast.success("Class created");
+      const synced = showMutationFeedback(toast, result, "Class created");
+      if (!synced) return;
       await refreshClasses();
     } catch (err) {
       toast.error(err.message);
@@ -729,9 +733,10 @@ const ClassesPage = () => {
           ? Number(editClassValue.teacherId)
           : null;
       }
-      await api.patch(`/classes/${editingClass.id}`, payload);
+      const result = await api.patch(`/classes/${editingClass.id}`, payload);
       setEditingClass(null);
-      toast.success("Class updated");
+      const synced = showMutationFeedback(toast, result, "Class updated");
+      if (!synced) return;
       await refreshClasses();
     } catch (err) {
       toast.error(err.message);
@@ -744,9 +749,10 @@ const ClassesPage = () => {
     if (!deleting) return;
     setDeleteBusy(true);
     try {
-      await api.delete(`/classes/${deleting.id}`);
-      toast.success("Class deleted");
+      const result = await api.delete(`/classes/${deleting.id}`);
+      const synced = showMutationFeedback(toast, result, "Class deleted");
       setDeleting(null);
+      if (!synced) return;
       await refreshClasses();
     } catch (err) {
       toast.error(err.message);

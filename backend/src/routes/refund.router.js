@@ -1,3 +1,4 @@
+import { syncMutation } from "../middleware/sync.middleware";
 import express from "express";
 import { authenticateUser } from "../middleware/auth.middleware";
 import { authorizeRoleOrPermission } from "../middleware/role.middleware";
@@ -19,8 +20,8 @@ router.use(
 );
 
 router.get("/", getRefundsController);
-router.post("/", validateRefund, createRefundController);
-router.patch("/:id", validateRefundUpdate, updateRefundController);
-router.delete("/:id", deleteRefundController);
+router.post("/", validateRefund, syncMutation(createRefundController));
+router.patch("/:id", validateRefundUpdate, syncMutation(updateRefundController));
+router.delete("/:id", syncMutation(deleteRefundController));
 
 export default router;

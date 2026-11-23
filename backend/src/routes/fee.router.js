@@ -1,3 +1,4 @@
+import { syncMutation } from "../middleware/sync.middleware";
 import express from "express";
 import { authenticateUser } from "../middleware/auth.middleware";
 import { authorizeRoleOrPermission } from "../middleware/role.middleware";
@@ -36,21 +37,21 @@ router.use(
 );
 
 router.get("/types", getFeeTypes);
-router.post("/types", validateFeeType, createFeeTypeController);
+router.post("/types", validateFeeType, syncMutation(createFeeTypeController));
 router.get("/types/:id", getFeeType);
-router.patch("/types/:id", validateFeeTypeUpdate, updateFeeTypeController);
-router.delete("/types/:id", deleteFeeTypeController);
+router.patch("/types/:id", validateFeeTypeUpdate, syncMutation(updateFeeTypeController));
+router.delete("/types/:id", syncMutation(deleteFeeTypeController));
 
 router.get("/plans", getFeePlans);
-router.post("/plans", validateFeePlan, createFeePlanController);
+router.post("/plans", validateFeePlan, syncMutation(createFeePlanController));
 router.get("/plans/:id", getFeePlan);
-router.patch("/plans/:id", validateFeePlanUpdate, updateFeePlanController);
-router.delete("/plans/:id", deleteFeePlanController);
+router.patch("/plans/:id", validateFeePlanUpdate, syncMutation(updateFeePlanController));
+router.delete("/plans/:id", syncMutation(deleteFeePlanController));
 
-router.post("/payments", validateFeePayment, collectFeePaymentController);
+router.post("/payments", validateFeePayment, syncMutation(collectFeePaymentController));
 
 router.get("/receipts", getReceiptsController);
-router.patch("/receipts/:id", validateReceiptUpdate, updateReceiptController);
+router.patch("/receipts/:id", validateReceiptUpdate, syncMutation(updateReceiptController));
 
 router.get("/students/:studentId/installments", getStudentInstallmentsController);
 

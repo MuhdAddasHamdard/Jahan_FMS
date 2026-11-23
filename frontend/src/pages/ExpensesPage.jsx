@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
+import { showMutationFeedback } from "../api/mutationFeedback";
 import PageHeader from "../components/PageHeader";
 import Alert from "../components/Alert";
 import Modal from "../components/Modal";
@@ -141,14 +142,15 @@ const ExpensesPage = () => {
     setSubmitting(true);
     setError("");
     try {
-      await api.post("/expenses", {
+      const result = await api.post("/expenses", {
         description: draft.description.trim(),
         amount: Number(draft.amount),
         paidOn: draft.paidOn || undefined,
       });
       setCreating(false);
       setDraft(emptyExpense);
-      toast.success("Expense recorded");
+      const synced = showMutationFeedback(toast, result, "Expense recorded");
+      if (!synced) return;
       await refresh();
     } catch (err) {
       toast.error(err.message);
@@ -176,13 +178,14 @@ const ExpensesPage = () => {
 
     setSubmitting(true);
     try {
-      await api.patch(`/expenses/${editing.id}`, {
+      const result = await api.patch(`/expenses/${editing.id}`, {
         description: editValue.description.trim(),
         amount: Number(editValue.amount),
         paidOn: editValue.paidOn || undefined,
       });
       setEditing(null);
-      toast.success("Expense updated");
+      const synced = showMutationFeedback(toast, result, "Expense updated");
+      if (!synced) return;
       await refresh();
     } catch (err) {
       toast.error(err.message);
@@ -194,9 +197,10 @@ const ExpensesPage = () => {
   const handleDelete = async () => {
     setDeleteBusy(true);
     try {
-      await api.delete(`/expenses/${deleting.id}`);
-      toast.success("Expense deleted");
+      const result = await api.delete(`/expenses/${deleting.id}`);
+      const synced = showMutationFeedback(toast, result, "Expense deleted");
       setDeleting(null);
+      if (!synced) return;
       await refresh();
     } catch (err) {
       toast.error(err.message);

@@ -1,3 +1,4 @@
+import { syncMutation } from "../middleware/sync.middleware";
 import express from "express";
 import { authenticateUser } from "../middleware/auth.middleware";
 import { authorizeRoleOrPermission } from "../middleware/role.middleware";
@@ -23,9 +24,9 @@ router.use(
 );
 
 router.get("/", getStaffList);
-router.post("/", validateStaff, createStaffController);
+router.post("/", validateStaff, syncMutation(createStaffController));
 router.get("/:id", getStaff);
-router.patch("/:id", validateStaffUpdate, updateStaffController);
-router.delete("/:id", deleteStaffController);
+router.patch("/:id", validateStaffUpdate, syncMutation(updateStaffController));
+router.delete("/:id", syncMutation(deleteStaffController));
 
 export default router;

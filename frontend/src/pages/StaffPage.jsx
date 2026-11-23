@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { showMutationFeedback } from "../api/mutationFeedback";
 import PageHeader from "../components/PageHeader";
 import Alert from "../components/Alert";
 import Modal from "../components/Modal";
@@ -153,7 +154,7 @@ const StaffPage = () => {
     setSubmitting(true);
     setError("");
     try {
-      await api.post("/staff", {
+      const result = await api.post("/staff", {
         staffNo: draft.staffNo.trim(),
         name: draft.name.trim(),
         designation: draft.designation,
@@ -162,7 +163,8 @@ const StaffPage = () => {
       });
       setCreating(false);
       setDraft(emptyStaff);
-      toast.success("Staff added");
+      const synced = showMutationFeedback(toast, result, "Staff added");
+      if (!synced) return;
       await refreshStaff();
     } catch (err) {
       toast.error(err.message);
@@ -192,14 +194,15 @@ const StaffPage = () => {
 
     setSubmitting(true);
     try {
-      await api.patch(`/staff/${editingStaff.id}`, {
+      const result = await api.patch(`/staff/${editingStaff.id}`, {
         name: editStaffValue.name.trim(),
         designation: editStaffValue.designation,
         phone: editStaffValue.phone.trim() || null,
         email: editStaffValue.email.trim() || null,
       });
       setEditingStaff(null);
-      toast.success("Staff details updated");
+      const synced = showMutationFeedback(toast, result, "Staff details updated");
+      if (!synced) return;
       await refreshStaff();
     } catch (err) {
       toast.error(err.message);

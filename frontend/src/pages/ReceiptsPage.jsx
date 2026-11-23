@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { showMutationFeedback } from "../api/mutationFeedback";
 import PageHeader from "../components/PageHeader";
 import Alert from "../components/Alert";
 import Modal from "../components/Modal";
@@ -156,15 +157,16 @@ const ReceiptsPage = () => {
     setSaving(true);
     setError("");
     try {
-      await api.post("/fees/payments", {
+      const result = await api.post("/fees/payments", {
         installmentId: Number(collect.installmentId),
         amount,
         date: collect.paidAt || undefined,
         notes: collect.notes.trim() || undefined,
-      });
+      }, { sourcePath: `/fees/students/${collect.studentId}/installments` });
       setCreating(false);
       setCollect(emptyCollect);
-      toast.success("Payment collected. Print the receipt from its Actions menu.");
+      const synced = showMutationFeedback(toast, result, "Payment collected. Print the receipt from its Actions menu.");
+      if (!synced) return;
       await refresh();
     } catch (err) {
       toast.error(err.message);
@@ -231,9 +233,10 @@ const ReceiptsPage = () => {
         payload.installmentId = Number(form.installmentId);
       }
 
-      await api.patch(`/fees/receipts/${editing.id}`, payload);
+      const result = await api.patch(`/fees/receipts/${editing.id}`, payload);
       setEditing(null);
-      toast.success("Receipt updated");
+      const synced = showMutationFeedback(toast, result, "Receipt updated");
+      if (!synced) return;
       await refresh();
     } catch (err) {
       toast.error(err.message);
