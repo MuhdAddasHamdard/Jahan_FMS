@@ -271,3 +271,38 @@ test("GET /reports/institute shows collections, expenses and outstanding dues", 
   await prisma.student.delete({ where: { id: student.data.id } });
   await prisma.feeType.delete({ where: { id: feeType.data.id } });
 });
+
+test("reports and expense filters use Kabul midnight, including the whole end date", async () => {
+  const entries = [
+    { description: "Kabul midnight", amount: 10, paidOn: "2027-02-01" },
+    { description: "End of Kabul day", amount: 20, paidOn: "2027-02-01T19:29:59.999Z" },
+    { description: "Previous Kabul day", amount: 40, paidOn: "2027-01-31T19:29:59.999Z" },
+    { description: "Next Kabul day", amount: 80, paidOn: "2027-02-01T19:30:00Z" },
+  ];
+  const created = [];
+
+  try {
+    for (const entry of entries) {
+      const result = await postJson(baseUrl, "/expenses", entry, token);
+      assert.equal(result.status, 201);
+      created.push(result.data);
+    }
+    assert.equal(created[0].paidOn, "2027-01-31T19:30:00.000Z");
+    assert.equal(created[1].paidOn, entries[1].paidOn);
+
+    const range = "?from=2027-02-01&to=2027-02-01";
+    const expenses = await getJson(baseUrl, `/expenses${range}`, token);
+    assert.equal(expenses.status, 200);
+    assert.deepEqual(expenses.data.map(({ id }) => id), [created[1].id, created[0].id]);
+
+    const summary = await getJson(baseUrl, `/reports/summary${range}`, token);
+    assert.equal(summary.status, 200);
+    assert.deepEqual(summary.data.byMonth, [{ month: "2027-02", income: 0, expense: 30 }]);
+
+    const institute = await getJson(baseUrl, `/reports/institute${range}`, token);
+    assert.equal(institute.status, 200);
+    assert.equal(institute.data.totals.expenses, 30);
+  } finally {
+    await prisma.expense.deleteMany({ where: { id: { in: created.map(({ id }) => id) } } });
+  }
+});

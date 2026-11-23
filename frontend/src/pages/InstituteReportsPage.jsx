@@ -3,7 +3,7 @@ import { api } from "../api/client";
 import PageHeader from "../components/PageHeader";
 import Spinner from "../components/Spinner";
 import Alert from "../components/Alert";
-import { formatNumber } from "../utils/format";
+import { formatCount, formatCurrency } from "../utils/format";
 
 const inputClass =
   "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100";
@@ -14,7 +14,7 @@ const StatCard = ({ label, value, accent = "", count = false }) => (
       {label}
     </p>
     <p className={`mt-2 text-2xl font-bold ${accent}`}>
-      {count ? Number(value || 0).toLocaleString("en-US") : formatNumber(value)}
+      {count ? formatCount(value) : formatCurrency(value)}
     </p>
   </div>
 );

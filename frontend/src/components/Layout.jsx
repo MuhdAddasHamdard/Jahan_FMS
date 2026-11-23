@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { formatDate, formatDateTime, formatTime } from "../utils/format";
 import SyncStatus from "./SyncStatus";
 import { useAuth } from "../auth/auth-context";
 import { PERMISSIONS } from "../auth/permissions";
@@ -321,6 +322,21 @@ const TopbarBreadcrumbs = ({ pathname }) => {
   );
 };
 
+const KabulClock = () => {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <time dateTime={now.toISOString()} title={formatDateTime(now)} className="shrink-0 text-right tabular-nums">
+      <span className="block text-xs font-semibold text-content">{formatTime(now)} Kabul</span>
+      <span className="hidden text-[11px] text-muted sm:block">{formatDate(now)}</span>
+    </time>
+  );
+};
+
 const Layout = () => {
   const { user, logout, hasPermission } = useAuth();
   const { theme } = useTheme();
@@ -480,6 +496,7 @@ const Layout = () => {
                 </span>
               </button>
 
+              <KabulClock />
               <ThemeToggle />
 
               <div className="relative">

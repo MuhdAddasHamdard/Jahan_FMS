@@ -8,7 +8,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import DataTable from "../components/DataTable";
 import { FormField, inputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
-import { formatNumber } from "../utils/format";
+import { formatCurrency } from "../utils/format";
 
 const PERIODS = ["MONTHLY", "SESSION", "ONE_TIME"];
 
@@ -30,7 +30,7 @@ const FeeTypeFields = ({ value, onChange, idPrefix }) => (
         className={inputClass}
       />
     </FormField>
-    <FormField label="Default amount" htmlFor={`${idPrefix}-amount`}>
+    <FormField label="Default amount (AFN)" htmlFor={`${idPrefix}-amount`}>
       <input
         id={`${idPrefix}-amount`}
         type="number"
@@ -231,7 +231,7 @@ const FeeTypesPage = () => {
       sortValue: (feeType) => Number(feeType.amount),
       render: (feeType) => (
         <span className="font-semibold text-slate-900">
-          {formatNumber(feeType.amount)}
+          {formatCurrency(feeType.amount)}
         </span>
       ),
     },

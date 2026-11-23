@@ -8,14 +8,13 @@ import { FormField, inputClass } from "../components/FormField";
 import Modal from "../components/Modal";
 import PageHeader from "../components/PageHeader";
 import { useToast } from "../hooks/useToast";
-import { formatDate, formatNumber } from "../utils/format";
+import { changedDateInput, formatCurrency, formatDate, toDateInput } from "../utils/format";
 import {
   openPrintWindow,
   printSalaryVoucher,
 } from "../utils/printDocument";
 
-const today = () => new Date().toISOString().slice(0, 10);
-const emptyRate = () => ({ staffId: "", amount: "", effectiveFrom: today() });
+const emptyRate = () => ({ staffId: "", amount: "", effectiveFrom: toDateInput(new Date()) });
 const emptyPayment = { staffId: "", periodMonth: "", amount: "", paidOn: "" };
 
 const SalariesPage = () => {
@@ -148,7 +147,7 @@ const SalariesPage = () => {
       staffId: String(payment.staff.id),
       periodMonth: payment.periodMonth,
       amount: String(payment.amount),
-      paidOn: payment.paidOn ? String(payment.paidOn).slice(0, 10) : "",
+      paidOn: toDateInput(payment.paidOn),
     });
     setFormError("");
     setPaymentEditor({ mode: "edit", payment });
@@ -172,7 +171,7 @@ const SalariesPage = () => {
     const payload = {
       periodMonth: paymentForm.periodMonth,
       amount: paymentForm.amount ? Number(paymentForm.amount) : undefined,
-      paidOn: paymentForm.paidOn || undefined,
+      paidOn: changedDateInput(paymentForm.paidOn, paymentEditor.payment?.paidOn),
     };
     const printWindow =
       paymentEditor.mode === "create" ? openPrintWindow() : null;
@@ -254,7 +253,7 @@ const SalariesPage = () => {
       header: "Monthly salary",
       align: "right",
       sortable: true,
-      render: (rate) => <span className="font-semibold text-content">{formatNumber(rate.amount)}</span>,
+      render: (rate) => <span className="font-semibold text-content">{formatCurrency(rate.amount)}</span>,
     },
     {
       key: "effectiveFrom",
@@ -294,7 +293,7 @@ const SalariesPage = () => {
       header: "Amount paid",
       align: "right",
       sortable: true,
-      render: (payment) => <span className="font-semibold text-content">{formatNumber(payment.amount)}</span>,
+      render: (payment) => <span className="font-semibold text-content">{formatCurrency(payment.amount)}</span>,
     },
     {
       key: "paidOn",
@@ -408,7 +407,7 @@ const SalariesPage = () => {
               </select>
             </FormField>
           )}
-          <FormField label="Monthly salary amount" htmlFor="salary-rate-amount">
+          <FormField label="Monthly salary amount (AFN)" htmlFor="salary-rate-amount">
             <input
               id="salary-rate-amount"
               type="number"
@@ -484,13 +483,13 @@ const SalariesPage = () => {
             />
           </FormField>
           <FormField
-            label="Amount paid"
+            label="Amount paid (AFN)"
             htmlFor="salary-payment-amount"
             hint={
               paymentForm.amount
                 ? "A custom payment amount will be recorded."
                 : rateForPayment
-                  ? `Defaults to ${formatNumber(rateForPayment.amount)}`
+                  ? `Defaults to ${formatCurrency(rateForPayment.amount)}`
                   : "No rate found for this month; enter an amount or add an effective salary rate."
             }
           >
@@ -501,7 +500,7 @@ const SalariesPage = () => {
               step="0.01"
               value={paymentForm.amount}
               onChange={(event) => setPaymentForm((current) => ({ ...current, amount: event.target.value }))}
-              placeholder={rateForPayment ? formatNumber(rateForPayment.amount) : "Enter amount"}
+              placeholder={rateForPayment ? formatCurrency(rateForPayment.amount) : "Enter amount"}
               className={inputClass}
             />
           </FormField>
@@ -522,9 +521,9 @@ const SalariesPage = () => {
         title={deleting?.type === "rate" ? "Delete salary rate" : "Delete salary payment"}
         message={
           deleting?.type === "rate"
-            ? `The ${formatNumber(deleting.item.amount)} rate for ${deleting.item.staff.name}, effective ${formatDate(deleting.item.effectiveFrom)}, will be removed. Existing payments remain unchanged.`
+            ? `The ${formatCurrency(deleting.item.amount)} rate for ${deleting.item.staff.name}, effective ${formatDate(deleting.item.effectiveFrom)}, will be removed. Existing payments remain unchanged.`
             : deleting
-              ? `The ${deleting.item.periodMonth} payment of ${formatNumber(deleting.item.amount)} to ${deleting.item.staff.name} will be removed from reports.`
+              ? `The ${deleting.item.periodMonth} payment of ${formatCurrency(deleting.item.amount)} to ${deleting.item.staff.name} will be removed from reports.`
               : ""
         }
         busy={busy}

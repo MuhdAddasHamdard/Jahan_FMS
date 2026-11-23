@@ -3,17 +3,10 @@ import { api } from "../api/client";
 import PageHeader from "../components/PageHeader";
 import Spinner from "../components/Spinner";
 import Alert from "../components/Alert";
-import { formatCurrency } from "../utils/format";
+import { formatCurrency, kabulYearToDate } from "../utils/format";
 
 const inputClass =
   "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100";
-
-const monthBounds = () => {
-  const now = new Date();
-  const from = new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10);
-  const to = now.toISOString().slice(0, 10);
-  return { from, to };
-};
 
 const SummaryCard = ({ label, value, accent }) => (
   <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -25,7 +18,7 @@ const SummaryCard = ({ label, value, accent }) => (
 );
 
 const ReportsPage = () => {
-  const defaults = monthBounds();
+  const defaults = kabulYearToDate();
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
   const [report, setReport] = useState(null);

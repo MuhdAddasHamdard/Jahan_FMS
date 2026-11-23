@@ -10,7 +10,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import DataTable from "../components/DataTable";
 import { FormField, inputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
-import { formatNumber } from "../utils/format";
+import { formatCount } from "../utils/format";
 import { PERMISSIONS } from "../auth/permissions";
 
 const DAY_NAMES = [
@@ -452,7 +452,7 @@ const ClassDetailPanel = ({ classRecord }) => {
 
       <div>
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          Schedule
+          Schedule (Kabul time)
         </h3>
         {detail.schedules?.length === 0 ? (
           <p className="text-sm text-slate-400">No schedule yet.</p>
@@ -798,7 +798,7 @@ const ClassesPage = () => {
       sortValue: (classRecord) => classRecord.studentCount ?? 0,
       render: (classRecord) => (
         <span className="text-slate-700">
-          {formatNumber(classRecord.studentCount)} student
+          {formatCount(classRecord.studentCount)} student
           {classRecord.studentCount === 1 ? "" : "s"}
         </span>
       ),

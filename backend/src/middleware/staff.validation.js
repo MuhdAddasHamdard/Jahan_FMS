@@ -1,3 +1,4 @@
+import { parseKabulDate } from "../utils/kabulDate";
 import { STAFF_DESIGNATIONS, PERIOD_MONTH_PATTERN } from "../constants/staff";
 
 const isPositiveNumber = (value) => Number.isFinite(Number(value)) && Number(value) > 0;
@@ -121,7 +122,7 @@ export const validateSalaryPayment = (req, res, next) => {
     return res.status(400).json({ message: "amount must be a positive number" });
   }
 
-  if (paidOn !== undefined && Number.isNaN(Date.parse(paidOn))) {
+  if (paidOn !== undefined && Number.isNaN(parseKabulDate(paidOn).getTime())) {
     return res.status(400).json({ message: "paidOn must be a valid date" });
   }
 
@@ -150,7 +151,7 @@ export const validateSalaryPaymentUpdate = (req, res, next) => {
     return res.status(400).json({ message: "amount must be a positive number" });
   }
 
-  if (paidOn !== undefined && Number.isNaN(Date.parse(paidOn))) {
+  if (paidOn !== undefined && Number.isNaN(parseKabulDate(paidOn).getTime())) {
     return res.status(400).json({ message: "paidOn must be a valid date" });
   }
 
@@ -184,7 +185,7 @@ export const validateRefundUpdate = (req, res, next) => {
     return res.status(400).json({ message: "receiptId must be a number" });
   }
 
-  if (refundedOn !== undefined && Number.isNaN(Date.parse(refundedOn))) {
+  if (refundedOn !== undefined && Number.isNaN(parseKabulDate(refundedOn).getTime())) {
     return res.status(400).json({ message: "refundedOn must be a valid date" });
   }
 
@@ -211,7 +212,7 @@ export const validateRefund = (req, res, next) => {
     return res.status(400).json({ message: "receiptId must be a number" });
   }
 
-  if (refundedOn !== undefined && Number.isNaN(Date.parse(refundedOn))) {
+  if (refundedOn !== undefined && Number.isNaN(parseKabulDate(refundedOn).getTime())) {
     return res.status(400).json({ message: "refundedOn must be a valid date" });
   }
 

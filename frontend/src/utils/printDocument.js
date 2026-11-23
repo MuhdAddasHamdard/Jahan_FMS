@@ -1,4 +1,4 @@
-import { formatDate, formatNumber } from "./format";
+import { formatDateTime, formatCurrency } from "./format";
 
 const PRINT_STYLES = `
   * { box-sizing: border-box; }
@@ -62,7 +62,7 @@ export const printDocument = (data, printWindow = openPrintWindow()) => {
     document,
     reference,
     "span",
-    ` ${data.reference ?? "—"}  |  Date: ${data.date ?? "—"}`,
+    ` ${data.reference ?? "—"}  |  Date and time: ${data.date ?? "—"}`,
   );
 
   const recipient = appendText(document, sheet, "section", "", "recipient");
@@ -104,7 +104,7 @@ export const printFeeReceipt = (receipt, printWindow) =>
       subtitle: "Payment received",
       referenceLabel: "Receipt number",
       reference: receipt.number,
-      date: formatDate(receipt.paidAt),
+      date: formatDateTime(receipt.paidAt),
       recipientLabel: "Received from",
       recipientName: receipt.student?.name ?? "Student",
       recipientDetails: receipt.student?.admissionNo
@@ -113,9 +113,9 @@ export const printFeeReceipt = (receipt, printWindow) =>
       rows: [
         { label: "Fee", value: receipt.feeType?.name ?? "Student fees" },
         ...(receipt.discountAmount > 0
-          ? [{ label: "Plan discount (total)", value: formatNumber(receipt.discountAmount) }]
+          ? [{ label: "Plan discount (total)", value: formatCurrency(receipt.discountAmount) }]
           : []),
-        { label: "Amount received", value: formatNumber(receipt.amount), total: true },
+        { label: "Amount received", value: formatCurrency(receipt.amount), total: true },
       ],
       note: receipt.notes || "Thank you. Please retain this receipt for your records.",
       signatures: ["Cashier", "Student / guardian"],
@@ -130,7 +130,7 @@ export const printSalaryVoucher = (payment, printWindow) =>
       subtitle: "Staff salary payment",
       referenceLabel: "Voucher number",
       reference: `SV-${String(payment.id).padStart(6, "0")}`,
-      date: formatDate(payment.paidOn),
+      date: formatDateTime(payment.paidOn),
       recipientLabel: "Paid to",
       recipientName: payment.staff?.name ?? "Staff member",
       recipientDetails: [
@@ -139,7 +139,7 @@ export const printSalaryVoucher = (payment, printWindow) =>
       ].filter(Boolean),
       rows: [
         { label: "Salary month", value: payment.periodMonth },
-        { label: "Amount paid", value: formatNumber(payment.amount), total: true },
+        { label: "Amount paid", value: formatCurrency(payment.amount), total: true },
       ],
       note: payment.notes || "Please retain this voucher as proof of salary payment.",
       signatures: ["Paid by", "Staff member"],

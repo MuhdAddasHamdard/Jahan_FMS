@@ -3,12 +3,13 @@ import { toNumber } from "../utils/money";
 import { INSTALLMENT_STATUSES } from "../constants/fee";
 import { ROLES } from "../constants/roles";
 import { classScope, studentScope } from "../utils/scope";
+import { kabulMonthStart } from "../utils/kabulDate";
 
 const monthWindow = () => {
   const now = new Date();
   return {
-    startOfMonth: new Date(now.getFullYear(), now.getMonth(), 1),
-    endOfMonth: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+    startOfMonth: kabulMonthStart(now),
+    endOfMonth: kabulMonthStart(now, 1),
   };
 };
 

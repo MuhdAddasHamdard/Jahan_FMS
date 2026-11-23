@@ -10,7 +10,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import DataTable from "../components/DataTable";
 import { FormField, inputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
-import { formatNumber, formatDate } from "../utils/format";
+import { formatCurrency, formatDate } from "../utils/format";
 
 const statusClass = (status) => {
   const styles = {
@@ -63,7 +63,7 @@ const PlanFields = ({ value, onChange, students, feeTypes, idPrefix, isNew, show
       </select>
     </FormField>
 
-    <FormField label={value.discountType === "NONE" ? "Amount" : "Amount before discount"} htmlFor={`${idPrefix}-total`}>
+    <FormField label={value.discountType === "NONE" ? "Amount (AFN)" : "Amount before discount (AFN)"} htmlFor={`${idPrefix}-total`}>
       <input
         id={`${idPrefix}-total`}
         type="number"
@@ -107,7 +107,7 @@ const PlanFields = ({ value, onChange, students, feeTypes, idPrefix, isNew, show
         </FormField>
         {value.discountType !== "NONE" && (
           <FormField
-            label={value.discountType === "PERCENTAGE" ? "Discount percent" : "Discount amount"}
+            label={value.discountType === "PERCENTAGE" ? "Discount percent" : "Discount amount (AFN)"}
             htmlFor={`${idPrefix}-discount-value`}
           >
             <input
@@ -162,10 +162,10 @@ const PaymentForm = ({ installment, onSubmit, onCancel }) => {
     >
       {error && <Alert type="error" message={error} />}
       <p className="text-xs text-slate-500">
-        Remaining balance: {formatNumber(remaining)}
+        Remaining balance: {formatCurrency(remaining)}
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <FormField label="Amount received" htmlFor={`pay-${installment.id}`}>
+        <FormField label="Amount received (AFN)" htmlFor={`pay-${installment.id}`}>
           <input
             id={`pay-${installment.id}`}
             type="number"
@@ -289,7 +289,7 @@ const PlanDetailPanel = ({ plan, onChanged, closePayment }) => {
             >
               {unpaid.map((item) => (
                 <option key={item.id} value={item.id}>
-                  Due {formatDate(item.dueDate)} · {formatNumber(item.amount - item.paidAmount)} remaining
+                  Due {formatDate(item.dueDate)} · {formatCurrency(item.amount - item.paidAmount)} remaining
                 </option>
               ))}
             </select>
@@ -306,25 +306,25 @@ const PlanDetailPanel = ({ plan, onChanged, closePayment }) => {
         <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
           <p className="text-xs text-slate-400">Total</p>
           <p className="text-lg font-bold text-slate-900">
-            {formatNumber(detail.totalAmount)}
+            {formatCurrency(detail.totalAmount)}
           </p>
         </div>
         <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
           <p className="text-xs text-slate-400">Discount</p>
           <p className="text-lg font-bold text-violet-700">
-            {formatNumber(detail.discountAmount)}
+            {formatCurrency(detail.discountAmount)}
           </p>
         </div>
         <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
           <p className="text-xs text-slate-400">Paid</p>
           <p className="text-lg font-bold text-teal-700">
-            {formatNumber(detail.paidAmount)}
+            {formatCurrency(detail.paidAmount)}
           </p>
         </div>
         <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
           <p className="text-xs text-slate-400">Balance</p>
           <p className="text-lg font-bold text-amber-700">
-            {formatNumber(detail.balance)}
+            {formatCurrency(detail.balance)}
           </p>
         </div>
       </div>
@@ -335,12 +335,12 @@ const PlanDetailPanel = ({ plan, onChanged, closePayment }) => {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-slate-900">
-                  {formatNumber(installment.amount)}
+                  {formatCurrency(installment.amount)}
                 </p>
                 <p className="text-xs text-slate-500">
                   Due {formatDate(installment.dueDate)}
                   {installment.paidAmount > 0
-                    ? ` · Paid ${formatNumber(installment.paidAmount)}`
+                    ? ` · Paid ${formatCurrency(installment.paidAmount)}`
                     : ""}
                 </p>
               </div>
@@ -585,12 +585,12 @@ const FeePlansPage = () => {
       render: (plan) => (
         <div>
           <span className="font-medium text-slate-700">
-            {formatNumber(plan.totalAmount)}
+            {formatCurrency(plan.totalAmount)}
           </span>
           {plan.discountAmount > 0 && (
             <span className="mt-1 block text-xs text-violet-600">
-              {formatNumber(plan.discountAmount)} discount from{" "}
-              {formatNumber(plan.grossAmount)}
+              {formatCurrency(plan.discountAmount)} discount from{" "}
+              {formatCurrency(plan.grossAmount)}
             </span>
           )}
         </div>
@@ -602,7 +602,7 @@ const FeePlansPage = () => {
       align: "right",
       sortable: true,
       render: (plan) => (
-        <span className="text-teal-700">{formatNumber(plan.paidAmount)}</span>
+        <span className="text-teal-700">{formatCurrency(plan.paidAmount)}</span>
       ),
     },
     {
@@ -612,7 +612,7 @@ const FeePlansPage = () => {
       sortable: true,
       render: (plan) => (
         <span className="font-semibold text-slate-900">
-          {formatNumber(plan.balance)}
+          {formatCurrency(plan.balance)}
         </span>
       ),
     },

@@ -7,7 +7,7 @@ import Modal from "../components/Modal";
 import DataTable from "../components/DataTable";
 import { FormField, inputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
-import { formatNumber, formatDate, formatDateTime } from "../utils/format";
+import { changedDateInput, formatCurrency, formatDate, formatDateTime, toDateInput } from "../utils/format";
 import {
   printFeeReceipt,
 } from "../utils/printDocument";
@@ -38,7 +38,7 @@ const RefundTag = ({ receipt }) => {
         {receipt.refundStatus === "REFUNDED" ? "Refunded" : "Partially refunded"}
       </span>
       <span className="text-[11px] text-slate-400">
-        {formatNumber(receipt.refundedAmount)}
+        {formatCurrency(receipt.refundedAmount)}
       </span>
     </span>
   );
@@ -185,7 +185,7 @@ const ReceiptsPage = () => {
       studentId: receipt.student ? String(receipt.student.id) : "",
       installmentId: receipt.installmentId ? String(receipt.installmentId) : "",
       amount: String(receipt.amount ?? ""),
-      paidAt: receipt.paidAt ? String(receipt.paidAt).slice(0, 10) : "",
+      paidAt: toDateInput(receipt.paidAt),
       notes: receipt.notes ?? "",
     });
     setPlans([]);
@@ -226,7 +226,7 @@ const ReceiptsPage = () => {
     try {
       const payload = {
         amount,
-        paidAt: form.paidAt || undefined,
+        paidAt: changedDateInput(form.paidAt, editing.paidAt),
         notes: form.notes.trim(),
       };
       if (form.installmentId) {
@@ -294,7 +294,7 @@ const ReceiptsPage = () => {
       sortValue: (receipt) => Number(receipt.amount),
       render: (receipt) => (
         <span className="font-semibold text-slate-900">
-          {formatNumber(receipt.amount)}
+          {formatCurrency(receipt.amount)}
         </span>
       ),
     },
@@ -410,7 +410,7 @@ const ReceiptsPage = () => {
             htmlFor="receipt-create-installment"
             hint={
               collectSelected
-                ? `Remaining: ${formatNumber(collectSelected.remaining)}`
+                ? `Remaining: ${formatCurrency(collectSelected.remaining)}`
                 : "Pick the installment this payment belongs to"
             }
           >
@@ -440,14 +440,14 @@ const ReceiptsPage = () => {
               </option>
               {collectOptions.map((option) => (
                 <option key={option.id} value={option.id}>
-                  {option.label} · remaining {formatNumber(option.remaining)}
+                  {option.label} · remaining {formatCurrency(option.remaining)}
                 </option>
               ))}
             </select>
           </FormField>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="Amount" htmlFor="receipt-create-amount">
+            <FormField label="Amount (AFN)" htmlFor="receipt-create-amount">
               <input
                 id="receipt-create-amount"
                 type="number"
@@ -560,14 +560,14 @@ const ReceiptsPage = () => {
               </option>
               {installmentOptions.map((option) => (
                 <option key={option.id} value={option.id}>
-                  {option.label} · remaining {formatNumber(option.remaining)}
+                  {option.label} · remaining {formatCurrency(option.remaining)}
                 </option>
               ))}
             </select>
           </FormField>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="Amount" htmlFor="receipt-amount">
+            <FormField label="Amount (AFN)" htmlFor="receipt-amount">
               <input
                 id="receipt-amount"
                 type="number"

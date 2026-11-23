@@ -1,5 +1,6 @@
 import prisma from "../prisma";
 import { toNumber } from "../utils/money";
+import { buildKabulDateRange, parseKabulDate } from "../utils/kabulDate";
 
 const formatExpense = (expense) => ({
   id: expense.id,
@@ -12,16 +13,7 @@ const formatExpense = (expense) => ({
 export const getExpenses = async (userId, filters = {}) => {
   const { from, to } = filters;
 
-  const where = {};
-  if (from || to) {
-    where.paidOn = {};
-    if (from) {
-      where.paidOn.gte = new Date(from);
-    }
-    if (to) {
-      where.paidOn.lte = new Date(to);
-    }
-  }
+  const where = from || to ? { paidOn: buildKabulDateRange(from, to) } : {};
 
   const expenses = await prisma.expense.findMany({
     where,
@@ -44,7 +36,7 @@ export const createExpense = async (userId, expenseData) => {
     data: {
       description: String(expenseData.description).trim(),
       amount: Number(expenseData.amount),
-      paidOn: expenseData.paidOn ? new Date(expenseData.paidOn) : new Date(),
+      paidOn: expenseData.paidOn ? parseKabulDate(expenseData.paidOn) : new Date(),
       userId,
     },
   });
@@ -70,7 +62,7 @@ export const updateExpense = async (userId, id, expenseData) => {
           ? String(expenseData.description).trim()
           : undefined,
       amount: expenseData.amount !== undefined ? Number(expenseData.amount) : undefined,
-      paidOn: expenseData.paidOn ? new Date(expenseData.paidOn) : undefined,
+      paidOn: expenseData.paidOn ? parseKabulDate(expenseData.paidOn) : undefined,
     },
   });
 

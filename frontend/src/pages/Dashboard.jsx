@@ -12,16 +12,8 @@ import { SkeletonStat, SkeletonChart } from "../components/Skeleton";
 import IncomeExpenseChart from "../components/charts/IncomeExpenseChart";
 import ExpenseDonut from "../components/charts/ExpenseDonut";
 import { CHART_COLORS } from "../components/charts/chartColors";
-import { formatCurrency, formatNumber, formatDateTime } from "../utils/format";
+import { formatCurrency, formatDateTime, kabulYearToDate } from "../utils/format";
 import StudentPortal from "./StudentPortal";
-
-const yearToDate = () => {
-  const now = new Date();
-  return {
-    from: new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10),
-    to: now.toISOString().slice(0, 10),
-  };
-};
 
 const StatGrid = () => (
   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -154,7 +146,7 @@ const Dashboard = () => {
     if (isTeacher) return undefined;
     let cancelled = false;
     const endpoint = isAdmin ? "/dashboard/admin/summary" : "/dashboard/summary";
-    const { from, to } = yearToDate();
+    const { from, to } = kabulYearToDate();
 
     Promise.all([
       api.get(endpoint),
@@ -435,11 +427,11 @@ const Dashboard = () => {
                       </td>
                       <td className="px-5 py-3 text-right">
                         <span className="font-semibold text-content">
-                          {formatNumber(receipt.amount)}
+                          {formatCurrency(receipt.amount)}
                         </span>
                         {receipt.refundedAmount > 0 && (
                           <span className="mt-0.5 block text-[11px] font-medium text-danger">
-                            −{formatNumber(receipt.refundedAmount)} refunded
+                            −{formatCurrency(receipt.refundedAmount)} refunded
                           </span>
                         )}
                       </td>

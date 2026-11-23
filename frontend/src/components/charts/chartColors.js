@@ -1,3 +1,5 @@
+import { KABUL_TIME_ZONE } from "../../utils/format";
+
 export const CHART_COLORS = {
   income: "#25d366",
   expense: "#fb7185",
@@ -8,11 +10,10 @@ export const CHART_COLORS = {
 
 export const formatMonth = (month, { full = false } = {}) => {
   if (!month) return "";
-  const [year, monthPart] = String(month).split("-");
-  const index = Number(monthPart) - 1;
-  const date = new Date(Number(year), index, 1);
+  const date = new Date(`${month}-01T00:00:00Z`);
   if (Number.isNaN(date.getTime())) return month;
   return date.toLocaleDateString("en-US", {
+    timeZone: KABUL_TIME_ZONE,
     month: full ? "long" : "short",
     year: full ? "numeric" : "2-digit",
   });

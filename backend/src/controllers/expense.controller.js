@@ -5,13 +5,15 @@ import {
   updateExpense,
   deleteExpense,
 } from "../services/expense.service";
+import { isValidKabulDateRange } from "../utils/kabulDate";
 
 export const getExpensesController = async (req, res) => {
+  const { from, to } = req.query;
+  if (!isValidKabulDateRange(from, to)) {
+    return res.status(400).json({ message: "Enter a valid date range with the start before or on the end date" });
+  }
   try {
-    const expenses = await getExpenses(req.user.id, {
-      from: req.query.from,
-      to: req.query.to,
-    });
+    const expenses = await getExpenses(req.user.id, { from, to });
     res.status(200).json(expenses);
   } catch (error) {
     console.error(error);

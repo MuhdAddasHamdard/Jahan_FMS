@@ -1,4 +1,5 @@
 import prisma from "../prisma";
+import { parseKabulDate } from "../utils/kabulDate";
 import { toNumber } from "../utils/money";
 
 const staffSelection = { id: true, staffNo: true, name: true, designation: true };
@@ -137,7 +138,7 @@ export const createSalaryPayment = async (
         staffId: staff.id,
         amount: payAmount,
         periodMonth,
-        paidOn: paidOn ? new Date(paidOn) : new Date(),
+        paidOn: paidOn ? parseKabulDate(paidOn) : new Date(),
         notes: notes ?? null,
         userId,
       },
@@ -179,7 +180,7 @@ export const updateSalaryPayment = async (id, { periodMonth, amount, paidOn }) =
       data: {
         periodMonth,
         amount: amount !== undefined ? Number(amount) : undefined,
-        paidOn: paidOn ? new Date(paidOn) : undefined,
+        paidOn: paidOn ? parseKabulDate(paidOn) : undefined,
       },
       include: { staff: { select: staffSelection } },
     });

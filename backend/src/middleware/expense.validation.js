@@ -1,3 +1,4 @@
+import { parseKabulDate } from "../utils/kabulDate";
 const isPositiveNumber = (value) => Number.isFinite(Number(value)) && Number(value) > 0;
 
 export const validateExpense = (req, res, next) => {
@@ -11,7 +12,7 @@ export const validateExpense = (req, res, next) => {
     return res.status(400).json({ message: "amount must be a positive number" });
   }
 
-  if (paidOn !== undefined && Number.isNaN(Date.parse(paidOn))) {
+  if (paidOn !== undefined && Number.isNaN(parseKabulDate(paidOn).getTime())) {
     return res.status(400).json({ message: "paidOn must be a valid date" });
   }
 
@@ -29,7 +30,7 @@ export const validateExpenseUpdate = (req, res, next) => {
     return res.status(400).json({ message: "amount must be a positive number" });
   }
 
-  if (paidOn !== undefined && Number.isNaN(Date.parse(paidOn))) {
+  if (paidOn !== undefined && Number.isNaN(parseKabulDate(paidOn).getTime())) {
     return res.status(400).json({ message: "paidOn must be a valid date" });
   }
 

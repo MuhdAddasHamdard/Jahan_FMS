@@ -8,7 +8,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import DataTable from "../components/DataTable";
 import { FormField, inputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
-import { formatNumber, formatDate } from "../utils/format";
+import { changedDateInput, formatCurrency, formatDate, toDateInput } from "../utils/format";
 
 const emptyExpense = { description: "", amount: "", paidOn: "" };
 
@@ -28,7 +28,7 @@ const ExpenseFields = ({ value, onChange, idPrefix }) => (
         className={inputClass}
       />
     </FormField>
-    <FormField label="Amount" htmlFor={`${idPrefix}-amount`}>
+    <FormField label="Amount (AFN)" htmlFor={`${idPrefix}-amount`}>
       <input
         id={`${idPrefix}-amount`}
         type="number"
@@ -65,9 +65,6 @@ const validateExpense = (value) => {
   }
   return "";
 };
-
-const toDateInput = (value) =>
-  value ? new Date(value).toISOString().slice(0, 10) : "";
 
 const ExpensesPage = () => {
   const toast = useToast();
@@ -114,14 +111,8 @@ const ExpensesPage = () => {
 
   const visibleExpenses = useMemo(() => {
     return expenses.filter((expense) => {
-      const date = expense.paidOn ? new Date(expense.paidOn) : null;
-      if (from && date && date < new Date(from)) return false;
-      if (to) {
-        const upper = new Date(to);
-        upper.setHours(23, 59, 59, 999);
-        if (date && date > upper) return false;
-      }
-      return true;
+      const date = toDateInput(expense.paidOn);
+      return !date || ((!from || date >= from) && (!to || date <= to));
     });
   }, [expenses, from, to]);
 
@@ -181,7 +172,7 @@ const ExpensesPage = () => {
       const result = await api.patch(`/expenses/${editing.id}`, {
         description: editValue.description.trim(),
         amount: Number(editValue.amount),
-        paidOn: editValue.paidOn || undefined,
+        paidOn: changedDateInput(editValue.paidOn, editing.paidOn),
       });
       setEditing(null);
       const synced = showMutationFeedback(toast, result, "Expense updated");
@@ -236,7 +227,7 @@ const ExpensesPage = () => {
       sortValue: (expense) => Number(expense.amount),
       render: (expense) => (
         <span className="font-semibold text-red-600">
-          {formatNumber(expense.amount)}
+          {formatCurrency(expense.amount)}
         </span>
       ),
     },
@@ -376,7 +367,7 @@ const ExpensesPage = () => {
         title="Delete expense"
         message={
           deleting
-            ? `"${deleting.description}" (${formatNumber(deleting.amount)}) will be removed from expense reports.`
+            ? `"${deleting.description}" (${formatCurrency(deleting.amount)}) will be removed from expense reports.`
             : ""
         }
         busy={deleteBusy}

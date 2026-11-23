@@ -2,20 +2,14 @@ import {
   getReportSummary as getReportSummaryService,
   getInstituteReport as getInstituteReportService,
 } from "../services/report.service";
-
-const isValidRange = (from, to) => {
-  if (from && to && Date.parse(from) > Date.parse(to)) {
-    return false;
-  }
-  return true;
-};
+import { isValidKabulDateRange } from "../utils/kabulDate";
 
 export const getReportSummary = async (req, res) => {
   const { from, to } = req.query;
 
-  if (!isValidRange(from, to)) {
+  if (!isValidKabulDateRange(from, to)) {
     return res.status(400).json({
-      message: "from date must be before or equal to to date",
+      message: "Enter a valid date range with the start before or on the end date",
     });
   }
 
@@ -37,9 +31,9 @@ export const getReportSummary = async (req, res) => {
 export const getInstituteReport = async (req, res) => {
   const { from, to } = req.query;
 
-  if (!isValidRange(from, to)) {
+  if (!isValidKabulDateRange(from, to)) {
     return res.status(400).json({
-      message: "from date must be before or equal to to date",
+      message: "Enter a valid date range with the start before or on the end date",
     });
   }
 

@@ -3,7 +3,7 @@ import { api } from "../api/client";
 import PageHeader from "../components/PageHeader";
 import Spinner from "../components/Spinner";
 import Alert from "../components/Alert";
-import { formatNumber, formatDate, formatDateTime } from "../utils/format";
+import { formatCurrency, formatDate, formatDateTime } from "../utils/format";
 import { useToast } from "../hooks/useToast";
 import { printFeeReceipt } from "../utils/printDocument";
 
@@ -153,7 +153,7 @@ const StudentPortal = () => {
               {total.label}
             </p>
             <p className={`mt-2 text-2xl font-bold ${total.accent}`}>
-              {formatNumber(totals?.[total.key] ?? 0)}
+              {formatCurrency(totals?.[total.key] ?? 0)}
             </p>
           </div>
         ))}
@@ -168,7 +168,7 @@ const StudentPortal = () => {
             <div className="space-y-5 px-5 py-4">
               <div>
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Schedule
+                  Schedule (Kabul time)
                 </h3>
                 {classInfo.schedules?.length === 0 ? (
                   <p className="text-sm text-slate-400">No schedule published.</p>
@@ -248,11 +248,11 @@ const StudentPortal = () => {
                         {plan.feeType.name}
                       </p>
                       <p className="text-xs text-slate-500">
-                        Total {formatNumber(plan.grossAmount)} · Discount{" "}
-                        {formatNumber(plan.discountAmount)} · Due{" "}
-                        {formatNumber(plan.totalAmount)} · Paid{" "}
-                        {formatNumber(plan.paidAmount)} · Balance{" "}
-                        {formatNumber(plan.balance)}
+                        Total {formatCurrency(plan.grossAmount)} · Discount{" "}
+                        {formatCurrency(plan.discountAmount)} · Due{" "}
+                        {formatCurrency(plan.totalAmount)} · Paid{" "}
+                        {formatCurrency(plan.paidAmount)} · Balance{" "}
+                        {formatCurrency(plan.balance)}
                       </p>
                     </div>
                     <span
@@ -269,7 +269,7 @@ const StudentPortal = () => {
                       >
                         <div>
                           <p className="text-xs font-medium text-slate-700">
-                            {formatNumber(installment.amount)}
+                            {formatCurrency(installment.amount)}
                           </p>
                           <p className="text-[11px] text-slate-400">
                             Due {formatDate(installment.dueDate)}
@@ -277,7 +277,7 @@ const StudentPortal = () => {
                         </div>
                         <div className="text-right">
                           <p className="text-xs font-semibold text-slate-900">
-                            Paid {formatNumber(installment.paidAmount)}
+                            Paid {formatCurrency(installment.paidAmount)}
                           </p>
                           <span
                             className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${statusClass(installment.status)}`}
@@ -320,7 +320,7 @@ const StudentPortal = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-semibold text-slate-900">
-                      {formatNumber(receipt.amount)}
+                      {formatCurrency(receipt.amount)}
                     </span>
                     <button
                       type="button"
@@ -358,7 +358,7 @@ const StudentPortal = () => {
                     </p>
                   </div>
                   <span className="text-sm font-semibold text-red-600">
-                    {formatNumber(refund.amount)}
+                    {formatCurrency(refund.amount)}
                   </span>
                 </li>
               ))}

@@ -1,3 +1,4 @@
+import { parseKabulDate } from "../utils/kabulDate";
 import { FEE_PERIODS, INSTALLMENT_STATUSES } from "../constants/fee";
 
 const isPositiveNumber = (value) => Number.isFinite(Number(value)) && Number(value) > 0;
@@ -169,7 +170,7 @@ export const validateReceiptUpdate = (req, res, next) => {
     return res.status(400).json({ message: "amount must be a positive number" });
   }
 
-  if (paidAt !== undefined && (typeof paidAt !== "string" || Number.isNaN(Date.parse(paidAt)))) {
+  if (paidAt !== undefined && (typeof paidAt !== "string" || Number.isNaN(parseKabulDate(paidAt).getTime()))) {
     return res.status(400).json({ message: "paidAt must be a valid date" });
   }
 
@@ -202,7 +203,7 @@ export const validateFeePayment = (req, res, next) => {
     return res.status(400).json({ message: "amount must be a positive number" });
   }
 
-  if (date !== undefined && Number.isNaN(Date.parse(date))) {
+  if (date !== undefined && Number.isNaN(parseKabulDate(date).getTime())) {
     return res.status(400).json({ message: "date must be a valid date" });
   }
 

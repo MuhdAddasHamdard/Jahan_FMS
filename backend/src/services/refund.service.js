@@ -1,4 +1,5 @@
 import prisma from "../prisma";
+import { parseKabulDate } from "../utils/kabulDate";
 import { toNumber } from "../utils/money";
 
 const formatReceiptRef = (receipt) =>
@@ -127,7 +128,7 @@ export const createRefund = async (
       return { error: "REFUND_EXCEEDS_PAID" };
     }
 
-    const refundedOnDate = refundedOn ? new Date(refundedOn) : new Date();
+    const refundedOnDate = refundedOn ? parseKabulDate(refundedOn) : new Date();
 
     const refund = await tx.refund.create({
       data: {
@@ -229,7 +230,7 @@ export const updateRefund = async (
         receiptId: nextReceiptId,
         amount: nextAmount,
         reason: reason !== undefined ? reason || null : undefined,
-        refundedOn: refundedOn ? new Date(refundedOn) : undefined,
+        refundedOn: refundedOn ? parseKabulDate(refundedOn) : undefined,
       },
       include: refundInclude,
     });

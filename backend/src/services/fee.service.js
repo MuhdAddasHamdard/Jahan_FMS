@@ -1,5 +1,6 @@
 import prisma from "../prisma";
 import { toNumber } from "../utils/money";
+import { kabulMonthStart, parseKabulDate } from "../utils/kabulDate";
 import { randomUUID } from "node:crypto";
 
 const formatFeeType = (feeType) => ({
@@ -49,7 +50,7 @@ export const installmentsFor = (totalAmount, installmentCount) => {
 
   const now = new Date();
   return amounts.map((amount, index) => {
-    const dueDate = new Date(now.getFullYear(), now.getMonth() + index, 1);
+    const dueDate = kabulMonthStart(now, index);
     return { amount, dueDate };
   });
 };
@@ -455,7 +456,7 @@ export const collectFeePayment = async (
       return { error: "AMOUNT_EXCEEDS_REMAINING" };
     }
 
-    const paidOn = date ? new Date(date) : new Date();
+    const paidOn = date ? parseKabulDate(date) : new Date();
 
     const receipt = await tx.receipt.create({
       data: {
@@ -629,7 +630,7 @@ export const updateReceipt = async (
       return { error: "AMOUNT_EXCEEDS_REMAINING" };
     }
 
-    const paidOn = paidAt ? new Date(paidAt) : receipt.paidAt;
+    const paidOn = paidAt ? parseKabulDate(paidAt) : receipt.paidAt;
 
     if (current && !sameTarget) {
       const oldPaid = Math.max(

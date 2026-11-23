@@ -10,7 +10,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import DataTable from "../components/DataTable";
 import { FormField, inputClass, errorInputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
-import { formatNumber, formatDate } from "../utils/format";
+import { formatCurrency, formatDate } from "../utils/format";
 import { PASSWORD_RULE, passwordLengthError } from "../utils/password";
 
 const STATUSES = ["ACTIVE", "INACTIVE"];
@@ -189,18 +189,18 @@ const FeePlanFields = ({ value, onChange, feeTypes, idPrefix }) => {
             <option value="">No fee</option>
             {feeTypes.map((type) => (
               <option key={type.id} value={type.id}>
-                {type.name} · {formatNumber(type.amount)}
+                {type.name} · {formatCurrency(type.amount)}
               </option>
             ))}
           </select>
         </FormField>
 
         <FormField
-          label="Total fee amount"
+          label="Total fee amount (AFN)"
           htmlFor={`${idPrefix}-fee-amount`}
           hint={
             selectedType
-              ? `Defaults to ${formatNumber(selectedType.amount)}`
+              ? `Defaults to ${formatCurrency(selectedType.amount)}`
               : "Set the fee type first"
           }
         >
@@ -248,7 +248,7 @@ const InstallmentRow = ({ installment }) => (
   <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
     <div>
       <p className="text-xs font-medium text-slate-700">
-        {formatNumber(installment.amount)}
+        {formatCurrency(installment.amount)}
       </p>
       <p className="text-[11px] text-slate-400">
         Due {formatDate(installment.dueDate)}
@@ -256,7 +256,7 @@ const InstallmentRow = ({ installment }) => (
     </div>
     <div className="text-right">
       <p className="text-xs font-semibold text-slate-900">
-        Paid {formatNumber(installment.paidAmount)}
+        Paid {formatCurrency(installment.paidAmount)}
       </p>
       <span
         className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${statusClass(installment.status)}`}
@@ -438,7 +438,7 @@ const StudentDetail = ({ student, isTeacher, onChanged }) => {
         {!isTeacher && (
           <p className="text-slate-600">
             <span className="font-semibold text-slate-900">Total refunded:</span>{" "}
-            {formatNumber(detail.totalRefunded)}
+            {formatCurrency(detail.totalRefunded)}
           </p>
         )}
       </div>
@@ -500,9 +500,9 @@ const StudentDetail = ({ student, isTeacher, onChanged }) => {
                         {plan.feeType.name}
                       </p>
                       <p className="text-xs text-slate-500">
-                        Total {formatNumber(plan.totalAmount)} · Paid{" "}
-                        {formatNumber(plan.paidAmount)} · Balance{" "}
-                        {formatNumber(plan.balance)}
+                        Total {formatCurrency(plan.totalAmount)} · Paid{" "}
+                        {formatCurrency(plan.paidAmount)} · Balance{" "}
+                        {formatCurrency(plan.balance)}
                       </p>
                     </div>
                     <span
@@ -546,7 +546,7 @@ const StudentDetail = ({ student, isTeacher, onChanged }) => {
                     </p>
                   </div>
                   <span className="text-sm font-semibold text-red-600">
-                    {formatNumber(refund.amount)}
+                    {formatCurrency(refund.amount)}
                   </span>
                 </li>
               ))}

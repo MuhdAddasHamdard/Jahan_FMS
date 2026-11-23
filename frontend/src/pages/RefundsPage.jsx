@@ -8,7 +8,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import DataTable from "../components/DataTable";
 import { FormField, inputClass } from "../components/FormField";
 import { useToast } from "../hooks/useToast";
-import { formatNumber, formatDate } from "../utils/format";
+import { changedDateInput, formatCurrency, formatDate, toDateInput } from "../utils/format";
 
 const emptyRefund = {
   studentId: "",
@@ -17,9 +17,6 @@ const emptyRefund = {
   reason: "",
   refundedOn: "",
 };
-
-const toDateInput = (value) =>
-  value ? new Date(value).toISOString().slice(0, 10) : "";
 
 const RefundFields = ({
   value,
@@ -74,7 +71,7 @@ const RefundFields = ({
         htmlFor={`${idPrefix}-receipt`}
         hint={
           selectedReceipt
-            ? `Remaining on this receipt: ${formatNumber(remainingFor(selectedReceipt))}`
+            ? `Remaining on this receipt: ${formatCurrency(remainingFor(selectedReceipt))}`
             : "Link the refund to a receipt so it is tagged as refunded"
         }
       >
@@ -90,15 +87,15 @@ const RefundFields = ({
           <option value="">No specific receipt</option>
           {studentReceipts.map((receipt) => (
             <option key={receipt.id} value={receipt.id}>
-              {receipt.number} · {formatNumber(receipt.amount)} · remaining{" "}
-              {formatNumber(remainingFor(receipt))}
+              {receipt.number} · {formatCurrency(receipt.amount)} · remaining{" "}
+              {formatCurrency(remainingFor(receipt))}
             </option>
           ))}
         </select>
       </FormField>
 
       <FormField
-        label="Refund amount"
+        label="Refund amount (AFN)"
         htmlFor={`${idPrefix}-amount`}
         hint="Cannot exceed what the student has paid"
       >
@@ -257,7 +254,7 @@ const RefundsPage = () => {
         receiptId: editValue.receiptId ? Number(editValue.receiptId) : null,
         amount: Number(editValue.amount),
         reason: editValue.reason.trim() || null,
-        refundedOn: editValue.refundedOn || undefined,
+        refundedOn: changedDateInput(editValue.refundedOn, editing.refundedOn),
       });
       setEditing(null);
       const synced = showMutationFeedback(toast, result, "Refund updated");
@@ -335,7 +332,7 @@ const RefundsPage = () => {
       sortValue: (refund) => Number(refund.amount),
       render: (refund) => (
         <span className="font-semibold text-red-600">
-          {formatNumber(refund.amount)}
+          {formatCurrency(refund.amount)}
         </span>
       ),
     },
@@ -461,7 +458,7 @@ const RefundsPage = () => {
         title="Delete refund"
         message={
           deleting
-            ? `This refund of ${formatNumber(deleting.amount)} will be removed and the amount will be added back to fee income.`
+            ? `This refund of ${formatCurrency(deleting.amount)} will be removed and the amount will be added back to fee income.`
             : ""
         }
         busy={deleteBusy}

@@ -1,34 +1,12 @@
 import prisma from "../prisma";
 import { toNumber } from "../utils/money";
 import { INSTALLMENT_STATUSES } from "../constants/fee";
+import { buildKabulDateRange, kabulDateKey } from "../utils/kabulDate";
 
-const buildDateWhere = (from, to) => {
-  const where = {};
-  if (from) {
-    where.gte = new Date(from);
-  }
-  if (to) {
-    where.lte = new Date(to);
-  }
-  return where;
-};
-
-const rangeWhere = (from, to) => {
-  const where = {};
-  if (from || to) {
-    where.gte = from ? new Date(from) : undefined;
-    where.lte = to ? new Date(to) : undefined;
-  }
-  return Object.keys(where).length ? where : undefined;
-};
-
-const monthKey = (date) => {
-  const d = new Date(date);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-};
+const monthKey = (date) => kabulDateKey(date).slice(0, 7);
 
 export const getReportSummary = async (userId, { from, to } = {}) => {
-  const dateWhere = rangeWhere(from, to);
+  const dateWhere = buildKabulDateRange(from, to);
 
   const [receipts, refunds, salaryPayments, expenses] = await Promise.all([
     prisma.receipt.findMany({
@@ -101,10 +79,11 @@ export const getInstituteReport = async (userId, { from, to } = {}) => {
   const expenseWhere = {};
 
   if (from || to) {
-    paidWhere.paidAt = buildDateWhere(from, to);
-    refundedWhere.refundedOn = buildDateWhere(from, to);
-    salaryWhere.paidOn = buildDateWhere(from, to);
-    expenseWhere.paidOn = buildDateWhere(from, to);
+    const range = buildKabulDateRange(from, to);
+    paidWhere.paidAt = range;
+    refundedWhere.refundedOn = range;
+    salaryWhere.paidOn = range;
+    expenseWhere.paidOn = range;
   }
 
   const [feeAgg, feeCount, refundAgg, refundCount, salaryAgg, salaryCount, expenseAgg, expenseCount, openInstallments] =
