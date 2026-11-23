@@ -1,0 +1,89 @@
+name: Verify Jahan FMS
+
+on:
+  push:
+    branches: [main, "codex/**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: jahan
+          POSTGRES_PASSWORD: jahan_ci_password
+          POSTGRES_DB: jahan_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jahan -d jahan_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://jahan:jahan_ci_password@127.0.0.1:5432/jahan_test
+      JWT_SECRET: isolated-ci-jahan-fms-secret-never-used-in-production
+      JAHAN_RELEASE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Install dependencies
+        run: |
+          npm ci --prefix backend
+          npm ci --prefix frontend
+      - name: Apply database migrations and generate client
+        working-directory: backend
+        run: |
+          npx prisma migrate deploy
+          npx prisma generate
+      - name: Verify backend
+        run: npm test --prefix backend
+      - name: Verify and build frontend
+        run: |
+          npm run lint --prefix frontend
+          npm run build --prefix frontend
+      - name: Smoke-test release and database readiness
+        run: |
+          npm start --prefix backend >"$RUNNER_TEMP/api.log" 2>&1 &
+          api_pid=$!
+          npm run preview --prefix frontend -- --host 127.0.0.1 --port 4173 --strictPort >"$RUNNER_TEMP/frontend.log" 2>&1 &
+          frontend_pid=$!
+          trap 'kill "$api_pid" "$frontend_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..15}; do
+            if curl -fsS http://127.0.0.1:5000/health/ready >/dev/null && curl -fsS http://127.0.0.1:4173/version.json >/dev/null; then
+              node scripts/verify-release.mjs http://127.0.0.1:4173 http://127.0.0.1:5000 "$GITHUB_SHA"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/api.log" "$RUNNER_TEMP/frontend.log"
+          exit 1
+      - name: Restore a backup to a separate database
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec -i "$PG_CONTAINER" psql -X -v ON_ERROR_STOP=1 -U jahan -d jahan_test <<'SQL'
+          INSERT INTO "User" ("name", "email", "password", "deactivatedAt")
+          VALUES ('Restore fixture', 'restore-fixture@example.test', 'not-a-login', CURRENT_TIMESTAMP);
+          INSERT INTO "Expense" ("description", "amount", "userId")
+          SELECT 'Restore fixture', 123.45, "id" FROM "User" WHERE "email" = 'restore-fixture@example.test';
+          SQL
+          docker exec "$PG_CONTAINER" pg_dump -U jahan -d jahan_test --format=custom --no-owner --no-privileges >"$RUNNER_TEMP/jahan.dump"
+          docker exec "$PG_CONTAINER" createdb -U jahan jahan_restore_test
+          docker exec -i "$PG_CONTAINER" pg_restore --exit-on-error --no-owner --no-privileges -U jahan -d jahan_restore_test <"$RUNNER_TEMP/jahan.dump"
+          restored=$(docker exec "$PG_CONTAINER" psql -X -At -U jahan -d jahan_restore_test -c \
+            "SELECT e.amount FROM \"Expense\" AS e JOIN \"User\" AS u ON u.id=e.\"userId\" WHERE u.email='restore-fixture@example.test' AND u.\"deactivatedAt\" IS NOT NULL;")
+          test "$restored" = "123.45"
